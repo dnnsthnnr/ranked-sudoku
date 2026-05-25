@@ -22,7 +22,10 @@ A numerical rank representing a player's skill level. ELO changes only when a pl
 A puzzle published on a fixed schedule (daily) at one or more difficulty levels. Completing a Daily Game produces a Seed Run that enters the matchmaking pool. Daily Games are the primary source of new Ghost Runs.
 
 ## Matchmaking
-The process of selecting a Ghost Run for a player to race. A player is matched to the eligible Ghost Run on the same puzzle difficulty whose creator's ELO (at time of Ghost Run creation) is closest to the player's current ELO. If no Ghost Run exists within a tight ELO window, the window widens until a match is found.
+The process of selecting a Ghost Run for a player to race. A player is matched to the eligible Ghost Run on the same puzzle difficulty whose stamped ELO is closest to the player's current ELO. If no Ghost Run exists within a tight ELO window, the window widens until a match is found.
+
+## Stamped ELO
+The ELO value permanently recorded on a Ghost Run at the moment the run is created. For a Winning Run, this is the creator's ELO after the Race that produced the Ghost Run (i.e., their post-win rating). For a Seed Run, this is the creator's ELO at the time they completed the Daily Game. The Stamped ELO never changes and is the value used for both Matchmaking and ELO calculation after a Race.
 
 ## Player
 A registered user who participates in Races and has an ELO rating.

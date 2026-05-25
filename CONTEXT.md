@@ -7,7 +7,7 @@ A recorded completion of a puzzle by a player, used as an asynchronous opponent.
 A Ghost Run produced by completing a Daily Game. Seed Runs are always eligible for matchmaking regardless of the player's Effective Time, since there is no opponent to win or lose against in a Daily Game.
 
 ## Race
-The act of a player attempting to beat a Ghost Run on the same puzzle. The win condition is Effective Time: a player wins if their Effective Time is less than the Ghost Run's Effective Time. The outcome of a Race determines the player's ELO change. The Ghost Run's creator is not a participant in the Race and their ELO is not affected by its outcome.
+The act of a player attempting to beat a Ghost Run on the same puzzle. The win condition is Effective Time: a player wins if their Effective Time is less than the Ghost Run's Effective Time. The outcome of a Race determines the player's ELO change. The Ghost Run's creator is not a participant in the Race and their ELO is not affected by its outcome. A player may not race the same Ghost Run more than once.
 
 ## Effective Time
 The score used to determine the winner of a Race. Computed as raw completion time plus 10 seconds per Mistake. Both the racer and the Ghost Run have an Effective Time; the lower value wins. A player who reaches 3 Mistakes loses the Race immediately, regardless of remaining time or the Ghost Run's Effective Time.

@@ -41,7 +41,7 @@ One of three levels — Easy, Medium, Hard — that classify both puzzles and Gh
 A ranked list of Effective Times for all players who completed a given day's Daily Game. Resets each day with the new puzzle. Has no effect on ELO or Matchmaking.
 
 ## Matchmaking
-The process of selecting a Ghost Run for a player to race. A player is matched to the eligible Ghost Run on the same puzzle difficulty whose stamped ELO is closest to the player's current ELO. If no Ghost Run exists within a tight ELO window, the window widens until a match is found.
+The process of selecting a Ghost Run for a player to race. A player is matched to the eligible Ghost Run on the same Difficulty Tier whose Stamped ELO is closest to the player's current ELO. The ELO window widens progressively until a match is found, guaranteeing a match as long as any unraced eligible Ghost Run exists in the tier.
 
 ## Stamped ELO
 The ELO value permanently recorded on a Ghost Run at the moment the run is created. For a Winning Run, this is the creator's ELO after the Race that produced the Ghost Run (i.e., their post-win rating). For a Seed Run, this is the creator's ELO at the time they completed the Daily Game. The Stamped ELO never changes and is the value used for both Matchmaking and ELO calculation after a Race.

@@ -19,7 +19,10 @@ An incorrect digit entered into a cell, detected immediately on entry. Each Mist
 A numerical rank representing a player's skill level. ELO changes only when a player completes a Race — never as a result of someone else racing the player's own Ghost Runs. The Ghost Run creator's ELO at a specific point in time is used solely as a calibration input to determine the magnitude of the racer's ELO change.
 
 ## Daily Game
-A short puzzle published daily. Completing a Daily Game produces a Seed Run that enters the matchmaking pool and posts the player's Effective Time to the Daily Leaderboard. Daily Games do not affect ELO.
+A standard 9×9 puzzle published daily at three difficulty tiers (Easy, Medium, Hard). Players choose which tier to play. Completing a Daily Game produces a Seed Run for that tier's matchmaking pool and posts the player's Effective Time to the Daily Leaderboard. Daily Games do not affect ELO.
+
+## Difficulty Tier
+One of three levels — Easy, Medium, Hard — that classify both puzzles and Ghost Runs. Matchmaking only pairs players with Ghost Runs of the same Difficulty Tier.
 
 ## Daily Leaderboard
 A ranked list of Effective Times for all players who completed a given day's Daily Game. Resets each day with the new puzzle. Has no effect on ELO or Matchmaking.

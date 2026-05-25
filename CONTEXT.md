@@ -1,10 +1,13 @@
 # Ranked Sudoku — Domain Glossary
 
 ## Ghost Run
-A recorded completion of a puzzle by a player, used as an asynchronous opponent. A Ghost Run captures enough information for another player to race against it (at minimum: completion time; potentially full move sequence for visualization). Ghost Runs are seeded primarily through Daily Games.
+A recorded completion of a puzzle by a player, used as an asynchronous opponent. A Ghost Run stores the player's full interaction sequence (every cell entry, erasure, and timestamp) to support both Effective Time calculation and future move-by-move replay visualization. Ghost Runs are seeded primarily through Daily Games.
 
 ## Race
-The act of a player attempting to beat a Ghost Run on the same puzzle. The outcome of a Race determines the player's ELO change. The Ghost Run's creator is not a participant in the Race and their ELO is not affected by its outcome.
+The act of a player attempting to beat a Ghost Run on the same puzzle. The win condition is Effective Time: a player wins if their Effective Time is less than the Ghost Run's Effective Time. The outcome of a Race determines the player's ELO change. The Ghost Run's creator is not a participant in the Race and their ELO is not affected by its outcome.
+
+## Effective Time
+The score used to determine the winner of a Race. Computed as raw completion time plus a penalty for each Mistake made during the solve. Both the racer and the Ghost Run have an Effective Time; the lower value wins.
 
 ## ELO
 A numerical rank representing a player's skill level. ELO changes only when a player completes a Race — never as a result of someone else racing the player's own Ghost Runs. The Ghost Run creator's ELO at a specific point in time is used solely as a calibration input to determine the magnitude of the racer's ELO change.

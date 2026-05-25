@@ -19,7 +19,10 @@ An incorrect digit entered into a cell, detected immediately on entry. Each Mist
 A numerical rank representing a player's skill level. ELO changes only when a player completes a Race — never as a result of someone else racing the player's own Ghost Runs. The Ghost Run creator's ELO at a specific point in time is used solely as a calibration input to determine the magnitude of the racer's ELO change.
 
 ## Daily Game
-A puzzle published on a fixed schedule (daily) at one or more difficulty levels. Completing a Daily Game produces a Ghost Run that enters the matchmaking pool. Daily Games are the primary source of new Ghost Runs.
+A puzzle published on a fixed schedule (daily) at one or more difficulty levels. Completing a Daily Game produces a Seed Run that enters the matchmaking pool. Daily Games are the primary source of new Ghost Runs.
+
+## Matchmaking
+The process of selecting a Ghost Run for a player to race. A player is matched to the eligible Ghost Run on the same puzzle difficulty whose creator's ELO (at time of Ghost Run creation) is closest to the player's current ELO. If no Ghost Run exists within a tight ELO window, the window widens until a match is found.
 
 ## Player
 A registered user who participates in Races and has an ELO rating.

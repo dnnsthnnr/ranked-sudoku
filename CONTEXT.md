@@ -21,6 +21,13 @@ A numerical rank representing a player's skill level. ELO changes only when a pl
 ## Skill Level
 A self-reported knowledge level chosen by a player during onboarding: No Experience, Beginner, Intermediate, or Experienced. Determines the player's Starting ELO. Not updated automatically as the player's ELO changes.
 
+| Skill Level    | Starting ELO |
+|----------------|--------------|
+| No Experience  | 400          |
+| Beginner       | 600          |
+| Intermediate   | 800          |
+| Experienced    | 1000         |
+
 ## Daily Game
 A standard 9×9 puzzle published daily at three difficulty tiers (Easy, Medium, Hard). Players choose which tier to play. Completing a Daily Game produces a Seed Run for that tier's matchmaking pool and posts the player's Effective Time to the Daily Leaderboard. Daily Games do not affect ELO.
 

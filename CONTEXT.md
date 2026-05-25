@@ -16,7 +16,10 @@ The score used to determine the winner of a Race. Computed as raw completion tim
 An incorrect digit entered into a cell, detected immediately on entry. Each Mistake adds 10 seconds to the player's Effective Time. Reaching 3 Mistakes ends the Race as a loss for that player. The Ghost Run's Mistakes are baked into its recorded Effective Time and do not trigger disqualification during a Race.
 
 ## ELO
-A numerical rank representing a player's skill level. ELO changes only when a player completes a Race — never as a result of someone else racing the player's own Ghost Runs. The Ghost Run creator's ELO at a specific point in time is used solely as a calibration input to determine the magnitude of the racer's ELO change.
+A numerical rank representing a player's skill level. ELO changes only when a player completes a Race — never as a result of someone else racing the player's own Ghost Runs. Calculation uses the standard ELO formula: `change = K × (outcome − expected_score)`, where expected score is derived from the difference between the racer's ELO and the Ghost Run's Stamped ELO. K=32 for a player's first 16 Races; K=16 thereafter. Starting ELO is determined by the player's self-reported Skill Level at onboarding.
+
+## Skill Level
+A self-reported knowledge level chosen by a player during onboarding: No Experience, Beginner, Intermediate, or Experienced. Determines the player's Starting ELO. Not updated automatically as the player's ELO changes.
 
 ## Daily Game
 A standard 9×9 puzzle published daily at three difficulty tiers (Easy, Medium, Hard). Players choose which tier to play. Completing a Daily Game produces a Seed Run for that tier's matchmaking pool and posts the player's Effective Time to the Daily Leaderboard. Daily Games do not affect ELO.

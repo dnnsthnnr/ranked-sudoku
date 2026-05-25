@@ -4,7 +4,10 @@
 A recorded completion of a puzzle by a player, used as an asynchronous opponent. A Ghost Run stores the player's full interaction sequence (every cell entry, erasure, and timestamp) to support both Effective Time calculation and future move-by-move replay visualization. Only Eligible Ghost Runs enter the matchmaking pool: a Ghost Run is eligible if it originated from a Daily Game (Seed Run) or from a Race the creator won (Winning Run). Ghost Runs from lost Races are not eligible and are discarded.
 
 ## Seed Run
-A Ghost Run produced by completing a Daily Game. Seed Runs are always eligible for matchmaking regardless of the player's Effective Time, since there is no opponent to win or lose against in a Daily Game.
+A Ghost Run produced by completing a Daily Game. Seed Runs are always eligible for matchmaking regardless of the player's Effective Time, since there is no opponent to win or lose against in a Daily Game. Seed Runs and Ghost Runs produced during a player's Placement Phase are candidates for future expiry from the matchmaking pool once pool health warrants it.
+
+## Placement Phase
+The first 16 Races of a player's career, during which K=32 applies. A player in their Placement Phase has a rapidly-settling ELO. Ghost Runs produced during this phase carry a Stamped ELO that may not yet reflect the player's true skill.
 
 ## Race
 The act of a player attempting to beat a Ghost Run on the same puzzle. The win condition is Effective Time: a player wins if their Effective Time is less than the Ghost Run's Effective Time. The outcome of a Race determines the player's ELO change. The Ghost Run's creator is not a participant in the Race and their ELO is not affected by its outcome. A player may not race the same Ghost Run more than once.

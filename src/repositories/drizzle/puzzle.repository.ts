@@ -19,10 +19,7 @@ export class DrizzlePuzzleRepository implements PuzzleRepository {
     return row ?? null;
   }
 
-  async findByDifficulty(
-    tier: DifficultyTier,
-    limit = 10
-  ): Promise<Puzzle[]> {
+  async findByDifficulty(tier: DifficultyTier, limit = 10): Promise<Puzzle[]> {
     return this.db.query.puzzles.findMany({
       where: eq(puzzles.difficultyTier, tier),
       limit,

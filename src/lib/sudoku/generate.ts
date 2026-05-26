@@ -1,4 +1,4 @@
-export type DifficultyTier = "easy" | "medium" | "hard";
+import type { DifficultyTier } from "@/domain/puzzle";
 
 const CLUE_COUNTS: Record<DifficultyTier, number> = {
   easy: 38,

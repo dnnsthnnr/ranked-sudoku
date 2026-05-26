@@ -16,7 +16,7 @@ export class DrizzleGhostRunRepository implements GhostRunRepository {
   async findMatchFor(
     playerId: string,
     tier: DifficultyTier,
-    playerElo: number
+    playerElo: number,
   ): Promise<GhostRun | null> {
     // Ghost runs the player has already raced
     const racedIds = this.db
@@ -33,8 +33,8 @@ export class DrizzleGhostRunRepository implements GhostRunRepository {
         and(
           eq(puzzles.difficultyTier, tier),
           ne(ghostRuns.playerId, playerId),
-          notInArray(ghostRuns.id, racedIds)
-        )
+          notInArray(ghostRuns.id, racedIds),
+        ),
       )
       .orderBy(asc(sql`abs(${ghostRuns.stampedElo} - ${playerElo})`))
       .limit(1);

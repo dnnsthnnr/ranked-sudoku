@@ -26,9 +26,6 @@ export class DrizzlePlayerRepository implements PlayerRepository {
   }
 
   async updateElo(id: string, elo: number, raceCount: number): Promise<void> {
-    await this.db
-      .update(players)
-      .set({ elo, raceCount })
-      .where(eq(players.id, id));
+    await this.db.update(players).set({ elo, raceCount }).where(eq(players.id, id));
   }
 }

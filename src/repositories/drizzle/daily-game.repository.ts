@@ -13,10 +13,7 @@ export class DrizzleDailyGameRepository implements DailyGameRepository {
     await this.db.insert(dailyGames).values(dailyGame);
   }
 
-  async findByDate(
-    date: string,
-    tier: DifficultyTier
-  ): Promise<DailyGame | null> {
+  async findByDate(date: string, tier: DifficultyTier): Promise<DailyGame | null> {
     const row = await this.db.query.dailyGames.findFirst({
       where: and(eq(dailyGames.date, date), eq(dailyGames.tier, tier)),
     });

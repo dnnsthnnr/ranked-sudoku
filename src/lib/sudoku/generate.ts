@@ -23,8 +23,7 @@ function isValid(grid: number[], pos: number, val: number): boolean {
   for (let i = 0; i < 9; i++) {
     if (grid[row * 9 + i] === val) return false;
     if (grid[i * 9 + col] === val) return false;
-    if (grid[(boxRow + Math.floor(i / 3)) * 9 + boxCol + (i % 3)] === val)
-      return false;
+    if (grid[(boxRow + Math.floor(i / 3)) * 9 + boxCol + (i % 3)] === val) return false;
   }
   return true;
 }

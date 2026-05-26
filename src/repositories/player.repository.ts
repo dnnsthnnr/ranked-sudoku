@@ -1,4 +1,4 @@
-import type { Player, SkillLevel } from "@/domain/player";
+import type { Player } from "@/domain/player";
 
 export interface PlayerRepository {
   upsert(player: Omit<Player, "createdAt">): Promise<void>;

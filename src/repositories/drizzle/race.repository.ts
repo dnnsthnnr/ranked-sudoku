@@ -14,10 +14,7 @@ export class DrizzleRaceRepository implements RaceRepository {
 
   async hasRaced(playerId: string, ghostRunId: string): Promise<boolean> {
     const row = await this.db.query.races.findFirst({
-      where: and(
-        eq(races.playerId, playerId),
-        eq(races.ghostRunId, ghostRunId)
-      ),
+      where: and(eq(races.playerId, playerId), eq(races.ghostRunId, ghostRunId)),
     });
     return row !== undefined;
   }

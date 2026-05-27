@@ -1,13 +1,5 @@
 import { dailyGameRepository, puzzleRepository } from "@/repositories";
-import type { DifficultyTier } from "@/domain/puzzle";
-
-const TIERS: DifficultyTier[] = ["easy", "medium", "hard"];
-
-function pickTierForDate(date: string): DifficultyTier {
-  // Deterministic daily assignment: hash the date string to one of the three tiers
-  const hash = date.split("").reduce((acc, c) => acc + c.charCodeAt(0), 0);
-  return TIERS[hash % TIERS.length];
-}
+import { pickTierForDate } from "@/lib/daily";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);

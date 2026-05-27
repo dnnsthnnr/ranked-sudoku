@@ -12,12 +12,12 @@ interface DailyPuzzle {
   solution: string;
 }
 
-type GamePhase = "selecting" | "loading" | "playing" | "finished";
+type GamePhase = "idle" | "loading" | "playing" | "finished";
 
 interface GameState {
   phase: GamePhase;
-  selectedTier: DifficultyTier;
   puzzle: DailyPuzzle | null;
+  tier: DifficultyTier | null;
   board: number[];
   given: boolean[];
   mistakes: Set<number>;
@@ -29,9 +29,8 @@ interface GameState {
 }
 
 type Action =
-  | { type: "SELECT_TIER"; tier: DifficultyTier }
   | { type: "LOAD_START" }
-  | { type: "LOAD_SUCCESS"; puzzle: DailyPuzzle }
+  | { type: "LOAD_SUCCESS"; puzzle: DailyPuzzle; tier: DifficultyTier }
   | { type: "LOAD_ERROR"; error: string }
   | { type: "SELECT_CELL"; index: number }
   | { type: "ENTER_VALUE"; index: number; value: number; isMistake: boolean; timestamp: number }
@@ -48,9 +47,6 @@ function initBoard(grid: string): { board: number[]; given: boolean[] } {
 
 function reducer(state: GameState, action: Action): GameState {
   switch (action.type) {
-    case "SELECT_TIER":
-      return { ...state, selectedTier: action.tier };
-
     case "LOAD_START":
       return { ...state, phase: "loading", error: null };
 
@@ -60,6 +56,7 @@ function reducer(state: GameState, action: Action): GameState {
         ...state,
         phase: "playing",
         puzzle: action.puzzle,
+        tier: action.tier,
         board,
         given,
         mistakes: new Set(),
@@ -72,7 +69,7 @@ function reducer(state: GameState, action: Action): GameState {
     }
 
     case "LOAD_ERROR":
-      return { ...state, phase: "selecting", error: action.error };
+      return { ...state, phase: "idle", error: action.error };
 
     case "SELECT_CELL":
       return { ...state, selectedCell: action.index };
@@ -118,7 +115,7 @@ function reducer(state: GameState, action: Action): GameState {
       return { ...state, phase: "finished" };
 
     case "RESTART":
-      return { ...state, phase: "selecting", puzzle: null, error: null };
+      return { ...state, phase: "idle", puzzle: null, tier: null, error: null };
 
     default:
       return state;
@@ -126,9 +123,9 @@ function reducer(state: GameState, action: Action): GameState {
 }
 
 const initialState: GameState = {
-  phase: "selecting",
-  selectedTier: "easy",
+  phase: "idle",
   puzzle: null,
+  tier: null,
   board: [],
   given: [],
   mistakes: new Set(),
@@ -181,8 +178,7 @@ export function DailyGameScreen() {
 
       const newBoard = [...board];
       newBoard[selectedCell] = digit;
-      const allCorrect = newBoard.every((v, i) => v === Number(puzzle.solution[i]));
-      if (allCorrect) dispatch({ type: "FINISH" });
+      if (newBoard.every((v, i) => v === Number(puzzle.solution[i]))) dispatch({ type: "FINISH" });
     }
 
     window.addEventListener("keydown", handleKey);
@@ -210,18 +206,18 @@ export function DailyGameScreen() {
     dispatch({ type: "LOAD_START" });
     try {
       const date = new Date().toISOString().split("T")[0];
-      const res = await fetch(`/api/daily?tier=${state.selectedTier}&date=${date}`);
+      const res = await fetch(`/api/daily?date=${date}`);
       if (!res.ok) {
         const err = await res.json();
         dispatch({ type: "LOAD_ERROR", error: err.error ?? "Failed to load puzzle" });
         return;
       }
       const data = await res.json();
-      dispatch({ type: "LOAD_SUCCESS", puzzle: data.puzzle });
+      dispatch({ type: "LOAD_SUCCESS", puzzle: data.puzzle, tier: data.tier });
     } catch {
       dispatch({ type: "LOAD_ERROR", error: "Network error — is the dev server running?" });
     }
-  }, [state.selectedTier]);
+  }, []);
 
   const enterValue = useCallback(
     (n: number) => {
@@ -243,10 +239,10 @@ export function DailyGameScreen() {
     [state],
   );
 
-  const { phase, selectedTier, puzzle, board, given, mistakes, selectedCell, elapsedMs, error } =
-    state;
+  const { phase, tier, puzzle, board, given, mistakes, selectedCell, elapsedMs, error } = state;
 
-  if (phase === "selecting" || phase === "loading") {
+  // ── Idle / Loading ───────────────────────────────────────────────────────
+  if (phase === "idle" || phase === "loading") {
     return (
       <div className="flex flex-col items-center gap-6">
         {error && (
@@ -254,32 +250,14 @@ export function DailyGameScreen() {
             {error}
           </p>
         )}
-        <div className="flex flex-col items-center gap-2">
-          <p className="text-sm font-medium text-gray-600">Select difficulty</p>
-          <div className="flex gap-2">
-            {(["easy", "medium", "hard"] as DifficultyTier[]).map((tier) => (
-              <button
-                key={tier}
-                type="button"
-                onClick={() => dispatch({ type: "SELECT_TIER", tier })}
-                className={`px-4 py-2 rounded-lg text-sm font-medium capitalize border transition-colors ${
-                  selectedTier === tier
-                    ? "bg-blue-600 text-white border-blue-600"
-                    : "bg-white text-gray-700 border-gray-300 hover:border-blue-400"
-                }`}
-              >
-                {tier}
-              </button>
-            ))}
-          </div>
-        </div>
+        <p className="text-gray-500 text-sm">Today&apos;s difficulty is assigned automatically.</p>
         <button
           type="button"
           onClick={startGame}
           disabled={phase === "loading"}
           className="px-8 py-3 bg-blue-600 text-white rounded-xl font-semibold text-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
         >
-          {phase === "loading" ? "Loading…" : "Start"}
+          {phase === "loading" ? "Loading…" : "Play Today's Puzzle"}
         </button>
       </div>
     );
@@ -287,6 +265,7 @@ export function DailyGameScreen() {
 
   if (!puzzle) return null;
 
+  // ── Finished ─────────────────────────────────────────────────────────────
   if (phase === "finished") {
     const effectiveTime = elapsedMs + mistakes.size * 10_000;
     const m = Math.floor(effectiveTime / 60000);
@@ -320,11 +299,12 @@ export function DailyGameScreen() {
     );
   }
 
+  // ── Playing ───────────────────────────────────────────────────────────────
   return (
     <div className="flex flex-col items-center gap-6">
       <div className="flex items-center justify-between w-full max-w-xs">
         <Timer elapsedMs={elapsedMs} mistakeCount={mistakes.size} />
-        <span className="text-xs text-gray-400 capitalize">{selectedTier}</span>
+        {tier && <span className="text-xs text-gray-400 capitalize">{tier}</span>}
       </div>
       <Board
         board={board}

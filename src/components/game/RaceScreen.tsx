@@ -7,39 +7,54 @@ import { OpponentProgress } from "@/components/game/OpponentProgress";
 import type { ReplayData, ReplayMove } from "@/lib/replay";
 import type { DifficultyTier } from "@/domain/puzzle";
 
-interface DailyPayload {
-  puzzle: { id: string; grid: string; solution: string };
+interface RunSummary {
+  id: string;
+  effectiveTime: number;
+  stampedElo: number;
+}
+
+interface RacePayload {
   ghostRun: { id: string; effectiveTime: number; stampedElo: number };
+  puzzle: { id: string; grid: string; solution: string };
   replay: ReplayData;
 }
 
-type GamePhase = "selecting" | "loading" | "playing" | "finished";
+type RacePhase =
+  | "selecting"
+  | "loading-runs"
+  | "run-list"
+  | "loading-race"
+  | "playing"
+  | "finished";
 
-interface GameState {
-  phase: GamePhase;
+interface RaceState {
+  phase: RacePhase;
   selectedTier: DifficultyTier;
-  payload: DailyPayload | null;
+  runs: RunSummary[];
+  payload: RacePayload | null;
   board: number[];
   given: boolean[];
   mistakes: Set<number>;
   selectedCell: number | null;
   elapsedMs: number;
   startTime: number | null;
-  outcome: "win" | "loss" | "forfeit" | null;
+  outcome: "win" | "loss" | null;
   playerMoves: ReplayMove[];
   error: string | null;
 }
 
 type Action =
   | { type: "SELECT_TIER"; tier: DifficultyTier }
-  | { type: "LOAD_START" }
-  | { type: "LOAD_SUCCESS"; payload: DailyPayload }
+  | { type: "LOAD_RUNS_START" }
+  | { type: "LOAD_RUNS_SUCCESS"; runs: RunSummary[] }
+  | { type: "LOAD_RACE_START" }
+  | { type: "LOAD_RACE_SUCCESS"; payload: RacePayload }
   | { type: "LOAD_ERROR"; error: string }
   | { type: "SELECT_CELL"; index: number }
   | { type: "ENTER_VALUE"; index: number; value: number; isMistake: boolean; timestamp: number }
   | { type: "ERASE"; index: number }
   | { type: "TICK"; elapsedMs: number }
-  | { type: "FINISH"; outcome: "win" | "loss" | "forfeit" }
+  | { type: "FINISH"; outcome: "win" | "loss" }
   | { type: "RESTART" };
 
 function initBoard(grid: string): { board: number[]; given: boolean[] } {
@@ -48,15 +63,21 @@ function initBoard(grid: string): { board: number[]; given: boolean[] } {
   return { board, given };
 }
 
-function reducer(state: GameState, action: Action): GameState {
+function reducer(state: RaceState, action: Action): RaceState {
   switch (action.type) {
     case "SELECT_TIER":
-      return { ...state, selectedTier: action.tier };
+      return { ...state, selectedTier: action.tier, runs: [], error: null };
 
-    case "LOAD_START":
-      return { ...state, phase: "loading", error: null };
+    case "LOAD_RUNS_START":
+      return { ...state, phase: "loading-runs", error: null };
 
-    case "LOAD_SUCCESS": {
+    case "LOAD_RUNS_SUCCESS":
+      return { ...state, phase: "run-list", runs: action.runs };
+
+    case "LOAD_RACE_START":
+      return { ...state, phase: "loading-race", error: null };
+
+    case "LOAD_RACE_SUCCESS": {
       const { board, given } = initBoard(action.payload.puzzle.grid);
       return {
         ...state,
@@ -75,7 +96,11 @@ function reducer(state: GameState, action: Action): GameState {
     }
 
     case "LOAD_ERROR":
-      return { ...state, phase: "selecting", error: action.error };
+      return {
+        ...state,
+        phase: state.runs.length > 0 ? "run-list" : "selecting",
+        error: action.error,
+      };
 
     case "SELECT_CELL":
       return { ...state, selectedCell: action.index };
@@ -89,17 +114,19 @@ function reducer(state: GameState, action: Action): GameState {
       } else {
         newMistakes.delete(action.index);
       }
-      const move: ReplayMove = {
-        cellIndex: action.index,
-        value: action.value,
-        timestamp: action.timestamp,
-        isMistake: action.isMistake,
-      };
       return {
         ...state,
         board: newBoard,
         mistakes: newMistakes,
-        playerMoves: [...state.playerMoves, move],
+        playerMoves: [
+          ...state.playerMoves,
+          {
+            cellIndex: action.index,
+            value: action.value,
+            timestamp: action.timestamp,
+            isMistake: action.isMistake,
+          },
+        ],
       };
     }
 
@@ -119,16 +146,17 @@ function reducer(state: GameState, action: Action): GameState {
       return { ...state, phase: "finished", outcome: action.outcome };
 
     case "RESTART":
-      return { ...state, phase: "selecting", payload: null, error: null };
+      return { ...state, phase: "selecting", runs: [], payload: null, error: null };
 
     default:
       return state;
   }
 }
 
-const initialState: GameState = {
+const initialState: RaceState = {
   phase: "selecting",
   selectedTier: "easy",
+  runs: [],
   payload: null,
   board: [],
   given: [],
@@ -141,10 +169,17 @@ const initialState: GameState = {
   error: null,
 };
 
-export function GameScreen() {
+function formatTime(ms: number): string {
+  const total = Math.floor(ms / 1000);
+  const m = Math.floor(total / 60);
+  const s = total % 60;
+  return `${m}m ${s}s`;
+}
+
+export function RaceScreen() {
   const [state, dispatch] = useReducer(reducer, initialState);
 
-  // Ticker — updates every 250ms while playing
+  // Ticker
   useEffect(() => {
     if (state.phase !== "playing" || state.startTime === null) return;
     const id = setInterval(() => {
@@ -177,26 +212,18 @@ export function GameScreen() {
       dispatch({ type: "ENTER_VALUE", index: selectedCell, value: digit, isMistake, timestamp });
 
       if (isMistake) {
-        // After entering a mistake, check if we've hit 3 total mistakes
-        const newMistakeCount = mistakes.size + 1;
-        if (newMistakeCount >= 3) {
-          dispatch({ type: "FINISH", outcome: "loss" });
-        }
+        if (mistakes.size + 1 >= 3) dispatch({ type: "FINISH", outcome: "loss" });
         return;
       }
 
-      // Check for puzzle completion
       const newBoard = [...board];
       newBoard[selectedCell] = digit;
-      const newMistakes = new Set(mistakes);
-      newMistakes.delete(selectedCell);
-      const solution = payload.puzzle.solution;
-      const allCorrect = newBoard.every((v, i) => v === Number(solution[i]));
-      if (allCorrect) {
-        const finalTime = timestamp;
-        const effectiveTime = finalTime + newMistakes.size * 10_000;
-        const outcome = effectiveTime <= payload.ghostRun.effectiveTime ? "win" : "loss";
-        dispatch({ type: "FINISH", outcome });
+      if (newBoard.every((v, i) => v === Number(payload.puzzle.solution[i]))) {
+        const effectiveTime = timestamp + mistakes.size * 10_000;
+        dispatch({
+          type: "FINISH",
+          outcome: effectiveTime <= payload.ghostRun.effectiveTime ? "win" : "loss",
+        });
       }
     }
 
@@ -208,41 +235,75 @@ export function GameScreen() {
   useEffect(() => {
     if (state.phase !== "finished" || !state.payload) return;
     const { payload, playerMoves, elapsedMs, mistakes, outcome } = state;
-    fetch("/api/daily/submit", {
+    fetch("/api/race/submit", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
+        ghostRunId: payload.ghostRun.id,
         puzzleId: payload.puzzle.id,
         moves: playerMoves,
         effectiveTime: elapsedMs + mistakes.size * 10_000,
         solvedAt: elapsedMs,
         mistakes: mistakes.size,
         outcome,
-        ghostRunId: payload.ghostRun.id,
       }),
     }).catch(() => {});
   }, [state.phase]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const startGame = useCallback(async () => {
-    dispatch({ type: "LOAD_START" });
+  const loadRuns = useCallback(async (tier: DifficultyTier) => {
+    dispatch({ type: "LOAD_RUNS_START" });
     try {
-      const date = new Date().toISOString().split("T")[0];
-      const res = await fetch(`/api/daily?tier=${state.selectedTier}&date=${date}`);
-      if (!res.ok) {
-        const err = await res.json();
-        dispatch({ type: "LOAD_ERROR", error: err.error ?? "Failed to load puzzle" });
+      const res = await fetch(`/api/race/runs?tier=${tier}`);
+      if (!res.ok) throw new Error("Failed to load runs");
+      const data = await res.json();
+      dispatch({ type: "LOAD_RUNS_SUCCESS", runs: data.runs });
+    } catch {
+      dispatch({ type: "LOAD_ERROR", error: "Could not load available runs" });
+    }
+  }, []);
+
+  const startRace = useCallback(async (ghostRunId: string) => {
+    dispatch({ type: "LOAD_RACE_START" });
+    try {
+      const res = await fetch(`/api/race?ghostRunId=${ghostRunId}`);
+      if (!res.ok) throw new Error("Failed to load race");
+      const data = (await res.json()) as RacePayload;
+      dispatch({ type: "LOAD_RACE_SUCCESS", payload: data });
+    } catch {
+      dispatch({ type: "LOAD_ERROR", error: "Could not load race data" });
+    }
+  }, []);
+
+  const enterValue = useCallback(
+    (n: number) => {
+      const { selectedCell, given, board, payload, startTime, mistakes, phase } = state;
+      if (phase !== "playing" || selectedCell === null || !payload || startTime === null) return;
+      if (given[selectedCell]) return;
+      const correctVal = Number(payload.puzzle.solution[selectedCell]);
+      const isMistake = n !== correctVal;
+      const timestamp = Date.now() - startTime;
+      dispatch({ type: "ENTER_VALUE", index: selectedCell, value: n, isMistake, timestamp });
+      if (isMistake) {
+        if (mistakes.size + 1 >= 3) dispatch({ type: "FINISH", outcome: "loss" });
         return;
       }
-      const payload = (await res.json()) as DailyPayload;
-      dispatch({ type: "LOAD_SUCCESS", payload });
-    } catch {
-      dispatch({ type: "LOAD_ERROR", error: "Network error — is the dev server running?" });
-    }
-  }, [state.selectedTier]);
+      const newBoard = [...board];
+      newBoard[selectedCell] = n;
+      if (newBoard.every((v, i) => v === Number(payload.puzzle.solution[i]))) {
+        const effectiveTime = timestamp + mistakes.size * 10_000;
+        dispatch({
+          type: "FINISH",
+          outcome: effectiveTime <= payload.ghostRun.effectiveTime ? "win" : "loss",
+        });
+      }
+    },
+    [state],
+  );
 
   const {
     phase,
     selectedTier,
+    runs,
     payload,
     board,
     given,
@@ -256,8 +317,8 @@ export function GameScreen() {
   const totalCells = given.filter((g) => !g).length;
   const playerFilledCount = board.filter((v, i) => v !== 0 && !given[i]).length;
 
-  // ── Selecting / Loading ──────────────────────────────────────────────────
-  if (phase === "selecting" || phase === "loading") {
+  // ── Tier selection ──────────────────────────────────────────────────────
+  if (phase === "selecting") {
     return (
       <div className="flex flex-col items-center gap-6">
         {error && (
@@ -275,8 +336,8 @@ export function GameScreen() {
                 onClick={() => dispatch({ type: "SELECT_TIER", tier })}
                 className={`px-4 py-2 rounded-lg text-sm font-medium capitalize border transition-colors ${
                   selectedTier === tier
-                    ? "bg-blue-600 text-white border-blue-600"
-                    : "bg-white text-gray-700 border-gray-300 hover:border-blue-400"
+                    ? "bg-orange-500 text-white border-orange-500"
+                    : "bg-white text-gray-700 border-gray-300 hover:border-orange-400"
                 }`}
               >
                 {tier}
@@ -286,26 +347,75 @@ export function GameScreen() {
         </div>
         <button
           type="button"
-          onClick={startGame}
-          disabled={phase === "loading"}
-          className="px-8 py-3 bg-blue-600 text-white rounded-xl font-semibold text-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+          onClick={() => loadRuns(selectedTier)}
+          className="px-8 py-3 bg-orange-500 text-white rounded-xl font-semibold text-lg hover:bg-orange-600 transition-colors"
         >
-          {phase === "loading" ? "Loading…" : "Start"}
+          Find Opponents
         </button>
+      </div>
+    );
+  }
+
+  // ── Loading runs ────────────────────────────────────────────────────────
+  if (phase === "loading-runs") {
+    return <p className="text-gray-500">Loading available runs…</p>;
+  }
+
+  // ── Run list ────────────────────────────────────────────────────────────
+  if (phase === "run-list" || phase === "loading-race") {
+    return (
+      <div className="flex flex-col items-center gap-4 w-full max-w-sm">
+        {error && (
+          <p className="text-red-600 text-sm bg-red-50 border border-red-200 rounded px-4 py-2 w-full">
+            {error}
+          </p>
+        )}
+        <div className="flex items-center justify-between w-full">
+          <h2 className="font-semibold text-gray-700 capitalize">{selectedTier} opponents</h2>
+          <button
+            type="button"
+            onClick={() => dispatch({ type: "RESTART" })}
+            className="text-sm text-gray-400 hover:text-gray-600"
+          >
+            ← Back
+          </button>
+        </div>
+        {runs.length === 0 ? (
+          <p className="text-gray-400 text-sm">
+            No runs available for this tier. Seed the DB first.
+          </p>
+        ) : (
+          <ul className="w-full flex flex-col gap-2">
+            {runs.map((run) => (
+              <li
+                key={run.id}
+                className="flex items-center justify-between bg-white border border-gray-200 rounded-xl px-4 py-3"
+              >
+                <div>
+                  <p className="font-medium text-gray-800">ELO {run.stampedElo}</p>
+                  <p className="text-sm text-gray-500">{formatTime(run.effectiveTime)}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => startRace(run.id)}
+                  disabled={phase === "loading-race"}
+                  className="px-4 py-1.5 bg-orange-500 text-white text-sm font-medium rounded-lg hover:bg-orange-600 disabled:opacity-50 transition-colors"
+                >
+                  Race
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
     );
   }
 
   if (!payload) return null;
 
-  // ── Finished ─────────────────────────────────────────────────────────────
+  // ── Finished ────────────────────────────────────────────────────────────
   if (phase === "finished") {
     const effectiveTime = elapsedMs + mistakes.size * 10_000;
-    const myMin = Math.floor(effectiveTime / 60000);
-    const mySec = Math.round((effectiveTime % 60000) / 1000);
-    const oppMin = Math.floor(payload.ghostRun.effectiveTime / 60000);
-    const oppSec = Math.round((payload.ghostRun.effectiveTime % 60000) / 1000);
-
     return (
       <div className="flex flex-col items-center gap-6">
         <div
@@ -314,32 +424,27 @@ export function GameScreen() {
           <p className="text-3xl font-bold mb-1">
             {outcome === "win" ? "You Won! 🎉" : "You Lost"}
           </p>
-          <p className="text-gray-600">
-            Your time: {myMin}m {mySec}s
-          </p>
-          <p className="text-gray-600">
-            Opponent: {oppMin}m {oppSec}s
-          </p>
+          <p className="text-gray-600">Your time: {formatTime(effectiveTime)}</p>
+          <p className="text-gray-600">Opponent: {formatTime(payload.ghostRun.effectiveTime)}</p>
         </div>
         <button
           type="button"
           onClick={() => dispatch({ type: "RESTART" })}
           className="px-6 py-2 bg-gray-800 text-white rounded-lg font-medium hover:bg-gray-700 transition-colors"
         >
-          Play Again
+          Race Again
         </button>
       </div>
     );
   }
 
-  // ── Playing ───────────────────────────────────────────────────────────────
+  // ── Playing ─────────────────────────────────────────────────────────────
   return (
     <div className="flex flex-col items-center gap-6">
       <div className="flex items-center justify-between w-full max-w-xs">
         <Timer elapsedMs={elapsedMs} mistakeCount={mistakes.size} />
         <span className="text-xs text-gray-400 capitalize">{selectedTier}</span>
       </div>
-
       <Board
         board={board}
         given={given}
@@ -347,55 +452,18 @@ export function GameScreen() {
         selectedCell={selectedCell}
         onCellClick={(idx) => dispatch({ type: "SELECT_CELL", index: idx })}
       />
-
-      {/* Number pad for touch devices */}
       <div className="flex gap-2">
         {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => (
           <button
             key={n}
             type="button"
-            onClick={() => {
-              if (
-                selectedCell === null ||
-                given[selectedCell] ||
-                !payload ||
-                state.startTime === null
-              )
-                return;
-              const correctVal = Number(payload.puzzle.solution[selectedCell]);
-              const isMistake = n !== correctVal;
-              const timestamp = Date.now() - state.startTime;
-              dispatch({
-                type: "ENTER_VALUE",
-                index: selectedCell,
-                value: n,
-                isMistake,
-                timestamp,
-              });
-              if (isMistake && mistakes.size + 1 >= 3) {
-                dispatch({ type: "FINISH", outcome: "loss" });
-              } else if (!isMistake) {
-                const newBoard = [...board];
-                newBoard[selectedCell] = n;
-                const allCorrect = newBoard.every(
-                  (v, i) => v === Number(payload.puzzle.solution[i]),
-                );
-                if (allCorrect) {
-                  const effectiveTime = timestamp + mistakes.size * 10_000;
-                  dispatch({
-                    type: "FINISH",
-                    outcome: effectiveTime <= payload.ghostRun.effectiveTime ? "win" : "loss",
-                  });
-                }
-              }
-            }}
+            onClick={() => enterValue(n)}
             className="w-9 h-9 bg-gray-100 hover:bg-gray-200 rounded-lg font-semibold text-gray-800 transition-colors"
           >
             {n}
           </button>
         ))}
       </div>
-
       <OpponentProgress
         replay={payload.replay}
         totalCells={totalCells}

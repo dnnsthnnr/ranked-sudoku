@@ -2,11 +2,13 @@ import { getReplayStore, type ReplayMove } from "@/lib/replay";
 import { randomUUID } from "node:crypto";
 
 interface SubmitBody {
+  ghostRunId: string;
   puzzleId: string;
   moves: ReplayMove[];
   effectiveTime: number;
   solvedAt: number;
   mistakes: number;
+  outcome: "win" | "loss" | "forfeit";
 }
 
 export async function POST(request: Request) {
@@ -20,7 +22,7 @@ export async function POST(request: Request) {
     solvedAt: body.solvedAt,
   });
 
-  // TODO: create GhostRun record (so this run can appear as a race opponent)
+  // TODO: create Race DB record + update player ELO once auth is wired
 
-  return Response.json({ ok: true, replayKey: key });
+  return Response.json({ ok: true, outcome: body.outcome, replayKey: key });
 }

@@ -13,6 +13,31 @@ export class DrizzleGhostRunRepository implements GhostRunRepository {
     await this.db.insert(ghostRuns).values(ghostRun);
   }
 
+  async findById(id: string): Promise<GhostRun | null> {
+    const row = await this.db.query.ghostRuns.findFirst({
+      where: eq(ghostRuns.id, id),
+    });
+    return row ?? null;
+  }
+
+  async findByPuzzleId(puzzleId: string): Promise<GhostRun | null> {
+    const row = await this.db.query.ghostRuns.findFirst({
+      where: eq(ghostRuns.puzzleId, puzzleId),
+    });
+    return row ?? null;
+  }
+
+  async listByTier(tier: DifficultyTier, limit = 20): Promise<GhostRun[]> {
+    const rows = await this.db
+      .select({ ghostRuns })
+      .from(ghostRuns)
+      .innerJoin(puzzles, eq(ghostRuns.puzzleId, puzzles.id))
+      .where(eq(puzzles.difficultyTier, tier))
+      .orderBy(asc(ghostRuns.effectiveTime))
+      .limit(limit);
+    return rows.map((r) => r.ghostRuns);
+  }
+
   async findMatchFor(
     playerId: string,
     tier: DifficultyTier,

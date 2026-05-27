@@ -48,3 +48,25 @@ The ELO value permanently recorded on a Ghost Run at the moment the run is creat
 
 ## Player
 A registered user who participates in Races and has an ELO rating.
+
+---
+
+# Testing Strategy
+
+Tests prefer integration and full use-case coverage over isolated unit tests. The guiding principle is: test the behaviour the application actually relies on, not the internal mechanics of individual functions.
+
+**What this means in practice:**
+
+- Repository tests run against a real in-memory SQLite database (via `createTestDb()` in `tests/helpers/db.ts`), with actual migrations applied. Nothing is mocked. A test that inserts a row and queries it back exercises the schema, the ORM mapping, and the query logic together.
+
+- Use-case tests (e.g. `tests/daily.test.ts`) seed data and exercise a multi-step flow — insert puzzle → insert daily game → resolve via `pickTierForDate` → retrieve puzzle — verifying the whole chain rather than each repository method in isolation.
+
+- Pure-logic modules (e.g. the sudoku generator) are tested at the public API surface: `generatePuzzle` is tested end-to-end including clue count, solution validity, given-cell consistency, and a full uniqueness check using an independent solver. Internal helpers (`fillGrid`, `countSolutions`) are not tested directly; their correctness is inferred from the outputs of the exported functions.
+
+- No mocking of collaborators (databases, file system, repositories). If a collaborator is too expensive to run in tests, the preference is to use a fast in-process equivalent (e.g. `file::memory:` for SQLite) rather than a mock.
+
+**What to avoid:**
+
+- Tests that assert implementation details (e.g. that a specific private function was called with specific arguments).
+- Mocking the database or repository layer in higher-level tests; use the real thing with a test database instead.
+- Testing every branch of a helper function that is never called directly — cover it through the use cases that depend on it.

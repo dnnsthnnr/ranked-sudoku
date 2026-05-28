@@ -4,7 +4,12 @@ import { useCallback, useEffect, useReducer } from "react";
 import { Board } from "@/components/sudoku/Board";
 import { Timer } from "@/components/game/Timer";
 import { LeadBar } from "@/components/game/LeadBar";
-import type { ReplayData, ReplayMove } from "@/lib/replay";
+import {
+  computeEffectiveTime,
+  MISTAKE_PENALTY_MS,
+  type ReplayData,
+  type ReplayMove,
+} from "@/lib/replay";
 import type { DifficultyTier } from "@/domain/puzzle";
 
 interface RunSummary {
@@ -158,8 +163,8 @@ function reducer(state: RaceState, action: Action): RaceState {
     case "TICK": {
       const newElapsedMs = action.elapsedMs;
       if (state.payload) {
-        const effectiveMs = newElapsedMs + state.mistakeCount * 10_000;
-        if (effectiveMs >= state.payload.ghostRun.effectiveTime) {
+        const effectiveMs = newElapsedMs + state.mistakeCount * MISTAKE_PENALTY_MS;
+        if (effectiveMs >= state.payload.replay.effectiveTime) {
           return { ...state, elapsedMs: newElapsedMs, phase: "finished", outcome: "loss" };
         }
       }
@@ -245,10 +250,10 @@ export function RaceScreen() {
       const newBoard = [...board];
       newBoard[selectedCell] = digit;
       if (newBoard.every((v, i) => v === Number(payload.puzzle.solution[i]))) {
-        const effectiveTime = timestamp + mistakeCount * 10_000;
+        const effectiveTime = timestamp + mistakeCount * MISTAKE_PENALTY_MS;
         dispatch({
           type: "FINISH",
-          outcome: effectiveTime <= payload.ghostRun.effectiveTime ? "win" : "loss",
+          outcome: effectiveTime <= payload.replay.effectiveTime ? "win" : "loss",
         });
       }
     }
@@ -268,7 +273,7 @@ export function RaceScreen() {
         ghostRunId: payload.ghostRun.id,
         puzzleId: payload.puzzle.id,
         moves: playerMoves,
-        effectiveTime: elapsedMs + mistakeCount * 10_000,
+        effectiveTime: computeEffectiveTime(playerMoves),
         solvedAt: elapsedMs,
         mistakes: mistakeCount,
         outcome,
@@ -316,10 +321,10 @@ export function RaceScreen() {
       const newBoard = [...board];
       newBoard[selectedCell] = n;
       if (newBoard.every((v, i) => v === Number(payload.puzzle.solution[i]))) {
-        const effectiveTime = timestamp + mistakeCount * 10_000;
+        const effectiveTime = timestamp + mistakeCount * MISTAKE_PENALTY_MS;
         dispatch({
           type: "FINISH",
-          outcome: effectiveTime <= payload.ghostRun.effectiveTime ? "win" : "loss",
+          outcome: effectiveTime <= payload.replay.effectiveTime ? "win" : "loss",
         });
       }
     },
@@ -443,7 +448,7 @@ export function RaceScreen() {
 
   // ── Finished ────────────────────────────────────────────────────────────
   if (phase === "finished") {
-    const effectiveTime = elapsedMs + mistakeCount * 10_000;
+    const effectiveTime = computeEffectiveTime(state.playerMoves);
     return (
       <div className="flex flex-col items-center gap-6">
         <div
@@ -453,7 +458,7 @@ export function RaceScreen() {
             {outcome === "win" ? "You Won! 🎉" : "You Lost"}
           </p>
           <p className="text-gray-600">Your time: {formatTime(effectiveTime)}</p>
-          <p className="text-gray-600">Opponent: {formatTime(payload.ghostRun.effectiveTime)}</p>
+          <p className="text-gray-600">Opponent: {formatTime(payload.replay.effectiveTime)}</p>
         </div>
         <button
           type="button"

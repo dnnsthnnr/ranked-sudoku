@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useReducer } from "react";
 import { Board } from "@/components/sudoku/Board";
 import { Timer } from "@/components/game/Timer";
-import type { ReplayMove } from "@/lib/replay";
+import { computeEffectiveTime, MISTAKE_PENALTY_MS, type ReplayMove } from "@/lib/replay";
 import type { DifficultyTier } from "@/domain/puzzle";
 
 interface DailyPuzzle {
@@ -213,7 +213,7 @@ export function DailyGameScreen() {
       body: JSON.stringify({
         puzzleId: puzzle.id,
         moves: playerMoves,
-        effectiveTime: elapsedMs + mistakeCount * 10_000,
+        effectiveTime: computeEffectiveTime(playerMoves),
         solvedAt: elapsedMs,
         mistakes: mistakeCount,
       }),
@@ -297,7 +297,7 @@ export function DailyGameScreen() {
 
   // ── Finished ─────────────────────────────────────────────────────────────
   if (phase === "finished") {
-    const effectiveTime = elapsedMs + mistakeCount * 10_000;
+    const effectiveTime = computeEffectiveTime(state.playerMoves);
     const m = Math.floor(effectiveTime / 60000);
     const s = Math.round((effectiveTime % 60000) / 1000);
     const forfeited = mistakeCount >= 3;
@@ -314,7 +314,7 @@ export function DailyGameScreen() {
           )}
           {mistakeCount > 0 && (
             <p className="text-red-600 text-sm mt-1">
-              {mistakeCount} mistake(s) — +{mistakeCount * 10}s penalty
+              {mistakeCount} mistake(s) — +{(mistakeCount * MISTAKE_PENALTY_MS) / 1000}s penalty
             </p>
           )}
         </div>

@@ -1,4 +1,4 @@
-import type { ReplayData } from "@/lib/replay";
+import { countGhostFillsAt, MISTAKE_PENALTY_MS, type ReplayData } from "@/lib/replay";
 import { computeLeadPct } from "@/lib/lead";
 
 interface LeadBarProps {
@@ -16,13 +16,9 @@ export function LeadBar({
   playerFilledCount,
   mistakeCount,
 }: LeadBarProps) {
-  const leadPct = computeLeadPct(
-    playerFilledCount,
-    totalCells,
-    elapsedMs,
-    mistakeCount,
-    replay.effectiveTime,
-  );
+  const playerEffectiveMs = elapsedMs + mistakeCount * MISTAKE_PENALTY_MS;
+  const ghostFilled = countGhostFillsAt(replay.moves, playerEffectiveMs);
+  const leadPct = computeLeadPct(playerFilledCount, totalCells, ghostFilled);
 
   return (
     <div className="w-full max-w-xs flex flex-col gap-1">
@@ -35,7 +31,7 @@ export function LeadBar({
           className="absolute left-0 top-0 h-full bg-blue-500 transition-all duration-300"
           style={{ width: `${leadPct}%` }}
         />
-        {/* Centre axis marker */}
+        {/* Centre axis marker at 50% */}
         <div className="absolute left-1/2 top-0 w-0.5 h-full bg-gray-600 z-10 -translate-x-1/2" />
       </div>
     </div>

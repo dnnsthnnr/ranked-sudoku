@@ -1,5 +1,5 @@
 import { ghostRunRepository, puzzleRepository } from "@/repositories";
-import { getReplayStore } from "@/lib/replay";
+import { getReplayStore } from "@/lib/replay-store";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);

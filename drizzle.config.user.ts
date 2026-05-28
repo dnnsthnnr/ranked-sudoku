@@ -5,7 +5,7 @@ export default {
   out: "./drizzle/user",
   dialect: "turso",
   dbCredentials: {
-    url: process.env.USER_DATABASE_URL ?? process.env.DATABASE_URL!,
+    url: process.env.USER_DATABASE_URL!,
     authToken: process.env.DATABASE_AUTH_TOKEN,
   },
 } satisfies Config;

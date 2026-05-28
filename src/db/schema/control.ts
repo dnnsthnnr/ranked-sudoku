@@ -22,6 +22,7 @@ export const players = sqliteTable("players", {
   displayName: text("display_name"),
   elo: integer("elo").notNull().default(800),
   raceCount: integer("race_count").notNull().default(0),
+  userDbId: text("user_db").notNull().references(() => userDbRegistry.id),
   skillLevel: text("skill_level", {
     enum: ["no_experience", "beginner", "intermediate", "experienced"],
   }).notNull(),
@@ -102,9 +103,9 @@ export const rankedLeaderboard = sqliteTable("ranked_leaderboard", {
 
 // Routes each player_id to the libsql URL of their user-data pool DB.
 export const userDbRegistry = sqliteTable("user_db_registry", {
-  playerId: text("player_id").primaryKey(),
+  id: text("id").$defaultFn(() => crypto.randomUUID()).primaryKey(),
   dbUrl: text("db_url").notNull(),
-  poolId: text("pool_id"),
+  encryptedToken: text("encrypted_token").notNull(),
   createdAt: text("created_at")
     .notNull()
     .default(sql`(datetime('now'))`),

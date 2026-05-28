@@ -5,7 +5,7 @@ import * as userSchema from "./schema/user";
 
 export const controlDb = drizzle(
   createClient({
-    url: process.env.CONTROL_DATABASE_URL ?? process.env.DATABASE_URL!,
+    url: process.env.CONTROL_DATABASE_URL!,
     authToken: process.env.DATABASE_AUTH_TOKEN,
   }),
   { schema: controlSchema },
@@ -13,7 +13,7 @@ export const controlDb = drizzle(
 
 export const userDb = drizzle(
   createClient({
-    url: process.env.USER_DATABASE_URL ?? process.env.DATABASE_URL!,
+    url: process.env.USER_DATABASE_URL!,
     authToken: process.env.DATABASE_AUTH_TOKEN,
   }),
   { schema: userSchema },

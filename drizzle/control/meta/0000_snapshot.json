@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "39d93791-1586-4f52-8cfb-0647c6b3dd2f",
+  "id": "296a6c60-a896-48a2-a9f1-271b6349e0ef",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "daily_games": {
@@ -64,6 +64,101 @@
       "uniqueConstraints": {},
       "checkConstraints": {}
     },
+    "daily_leaderboard": {
+      "name": "daily_leaderboard",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "daily_game_id": {
+          "name": "daily_game_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "player_id": {
+          "name": "player_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "display_name": {
+          "name": "display_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "effective_time": {
+          "name": "effective_time",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "mistakes": {
+          "name": "mistakes",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "rank": {
+          "name": "rank",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "computed_at": {
+          "name": "computed_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(datetime('now'))"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "daily_leaderboard_daily_game_id_daily_games_id_fk": {
+          "name": "daily_leaderboard_daily_game_id_daily_games_id_fk",
+          "tableFrom": "daily_leaderboard",
+          "tableTo": "daily_games",
+          "columnsFrom": [
+            "daily_game_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "daily_leaderboard_player_id_players_id_fk": {
+          "name": "daily_leaderboard_player_id_players_id_fk",
+          "tableFrom": "daily_leaderboard",
+          "tableTo": "players",
+          "columnsFrom": [
+            "player_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
     "ghost_runs": {
       "name": "ghost_runs",
       "columns": {
@@ -102,20 +197,27 @@
           "notNull": true,
           "autoincrement": false
         },
-        "replay_r2_key": {
-          "name": "replay_r2_key",
+        "replay_key": {
+          "name": "replay_key",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
         },
-        "is_seed_run": {
-          "name": "is_seed_run",
+        "source": {
+          "name": "source",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "is_active_in_pool": {
+          "name": "is_active_in_pool",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false,
-          "default": false
+          "default": true
         },
         "created_at": {
           "name": "created_at",
@@ -169,6 +271,13 @@
           "notNull": true,
           "autoincrement": false
         },
+        "display_name": {
+          "name": "display_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
         "elo": {
           "name": "elo",
           "type": "integer",
@@ -185,6 +294,13 @@
           "autoincrement": false,
           "default": 0
         },
+        "user_db": {
+          "name": "user_db",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
         "skill_level": {
           "name": "skill_level",
           "type": "text",
@@ -199,10 +315,32 @@
           "notNull": true,
           "autoincrement": false,
           "default": "(datetime('now'))"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(datetime('now'))"
         }
       },
       "indexes": {},
-      "foreignKeys": {},
+      "foreignKeys": {
+        "players_user_db_user_db_registry_id_fk": {
+          "name": "players_user_db_user_db_registry_id_fk",
+          "tableFrom": "players",
+          "tableTo": "user_db_registry",
+          "columnsFrom": [
+            "user_db"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "checkConstraints": {}
@@ -253,8 +391,100 @@
       "uniqueConstraints": {},
       "checkConstraints": {}
     },
-    "races": {
-      "name": "races",
+    "ranked_leaderboard": {
+      "name": "ranked_leaderboard",
+      "columns": {
+        "player_id": {
+          "name": "player_id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "display_name": {
+          "name": "display_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "elo": {
+          "name": "elo",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "race_count": {
+          "name": "race_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "wins": {
+          "name": "wins",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "losses": {
+          "name": "losses",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "forfeits": {
+          "name": "forfeits",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "rank": {
+          "name": "rank",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "computed_at": {
+          "name": "computed_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(datetime('now'))"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "ranked_leaderboard_player_id_players_id_fk": {
+          "name": "ranked_leaderboard_player_id_players_id_fk",
+          "tableFrom": "ranked_leaderboard",
+          "tableTo": "players",
+          "columnsFrom": [
+            "player_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "user_db_registry": {
+      "name": "user_db_registry",
       "columns": {
         "id": {
           "name": "id",
@@ -263,52 +493,16 @@
           "notNull": true,
           "autoincrement": false
         },
-        "player_id": {
-          "name": "player_id",
+        "db_url": {
+          "name": "db_url",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
         },
-        "ghost_run_id": {
-          "name": "ghost_run_id",
+        "encrypted_token": {
+          "name": "encrypted_token",
           "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "outcome": {
-          "name": "outcome",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "effective_time": {
-          "name": "effective_time",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "mistakes": {
-          "name": "mistakes",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": 0
-        },
-        "elo_before": {
-          "name": "elo_before",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "elo_after": {
-          "name": "elo_after",
-          "type": "integer",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
@@ -323,34 +517,7 @@
         }
       },
       "indexes": {},
-      "foreignKeys": {
-        "races_player_id_players_id_fk": {
-          "name": "races_player_id_players_id_fk",
-          "tableFrom": "races",
-          "tableTo": "players",
-          "columnsFrom": [
-            "player_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "races_ghost_run_id_ghost_runs_id_fk": {
-          "name": "races_ghost_run_id_ghost_runs_id_fk",
-          "tableFrom": "races",
-          "tableTo": "ghost_runs",
-          "columnsFrom": [
-            "ghost_run_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
+      "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "checkConstraints": {}

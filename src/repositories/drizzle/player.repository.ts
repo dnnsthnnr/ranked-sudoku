@@ -2,11 +2,11 @@ import { eq, sql } from "drizzle-orm";
 import type { LibSQLDatabase } from "drizzle-orm/libsql";
 import type { Player } from "@/domain/player";
 import type { PlayerRepository } from "@/repositories/player.repository";
-import { players } from "@/db/schema";
-import type * as schema from "@/db/schema";
+import { players } from "@/db/schema/control";
+import type * as controlSchema from "@/db/schema/control";
 
 export class DrizzlePlayerRepository implements PlayerRepository {
-  constructor(private readonly db: LibSQLDatabase<typeof schema>) {}
+  constructor(private readonly db: LibSQLDatabase<typeof controlSchema>) {}
 
   async upsert(player: Omit<Player, "createdAt" | "updatedAt">): Promise<void> {
     await this.db

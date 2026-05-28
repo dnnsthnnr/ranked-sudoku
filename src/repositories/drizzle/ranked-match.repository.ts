@@ -2,11 +2,11 @@ import { and, desc, eq } from "drizzle-orm";
 import type { LibSQLDatabase } from "drizzle-orm/libsql";
 import type { RankedMatch } from "@/domain/ranked-match";
 import type { RankedMatchRepository } from "@/repositories/ranked-match.repository";
-import { rankedMatches } from "@/db/schema";
-import type * as schema from "@/db/schema";
+import { rankedMatches } from "@/db/schema/user";
+import type * as userSchema from "@/db/schema/user";
 
 export class DrizzleRankedMatchRepository implements RankedMatchRepository {
-  constructor(private readonly db: LibSQLDatabase<typeof schema>) {}
+  constructor(private readonly db: LibSQLDatabase<typeof userSchema>) {}
 
   async insert(match: Omit<RankedMatch, "createdAt">): Promise<void> {
     await this.db.insert(rankedMatches).values(match);

@@ -6,8 +6,8 @@ describe("DrizzlePuzzleRepository", () => {
   let repo: DrizzlePuzzleRepository;
 
   beforeAll(async () => {
-    const { db } = await createTestDb();
-    repo = new DrizzlePuzzleRepository(db);
+    const { controlDb } = await createTestDb();
+    repo = new DrizzlePuzzleRepository(controlDb);
   });
 
   it("inserts and retrieves a puzzle by id", async () => {

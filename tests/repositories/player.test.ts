@@ -6,8 +6,8 @@ describe("DrizzlePlayerRepository", () => {
   let repo: DrizzlePlayerRepository;
 
   beforeAll(async () => {
-    const { db } = await createTestDb();
-    repo = new DrizzlePlayerRepository(db);
+    const { controlDb } = await createTestDb();
+    repo = new DrizzlePlayerRepository(controlDb);
   });
 
   it("upserts and retrieves a player", async () => {

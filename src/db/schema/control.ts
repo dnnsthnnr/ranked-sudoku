@@ -1,6 +1,10 @@
 import { sql } from "drizzle-orm";
 import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
+// ─── Control Plane ────────────────────────────────────────────────────────────
+// Global, single Turso DB. Small tables, globally queried. All FK constraints
+// within this plane are enforced. References from the user plane are logical IDs.
+
 export const puzzles = sqliteTable("puzzles", {
   id: text("id").primaryKey(),
   grid: text("grid").notNull(),
@@ -41,6 +45,7 @@ export const dailyGames = sqliteTable("daily_games", {
     .default(sql`(datetime('now'))`),
 });
 
+// Matchmaking pool — fed by user-plane completions, queried globally for all players.
 export const ghostRuns = sqliteTable("ghost_runs", {
   id: text("id").primaryKey(),
   puzzleId: text("puzzle_id")
@@ -61,49 +66,7 @@ export const ghostRuns = sqliteTable("ghost_runs", {
     .default(sql`(datetime('now'))`),
 });
 
-export const rankedMatches = sqliteTable("ranked_matches", {
-  id: text("id").primaryKey(),
-  playerId: text("player_id")
-    .notNull()
-    .references(() => players.id),
-  ghostRunId: text("ghost_run_id")
-    .notNull()
-    .references(() => ghostRuns.id),
-  opponentPlayerId: text("opponent_player_id").references(() => players.id),
-  puzzleId: text("puzzle_id")
-    .notNull()
-    .references(() => puzzles.id),
-  matchType: text("match_type", {
-    enum: ["ranked", "ghost_match", "live_match"],
-  })
-    .notNull()
-    .default("ranked"),
-  outcome: text("outcome", { enum: ["win", "loss", "forfeit"] }).notNull(),
-  effectiveTime: integer("effective_time"),
-  mistakes: integer("mistakes").notNull().default(0),
-  eloBefore: integer("elo_before").notNull(),
-  eloAfter: integer("elo_after").notNull(),
-  createdAt: text("created_at")
-    .notNull()
-    .default(sql`(datetime('now'))`),
-});
-
-export const dailyCompletions = sqliteTable("daily_completions", {
-  id: text("id").primaryKey(),
-  dailyGameId: text("daily_game_id")
-    .notNull()
-    .references(() => dailyGames.id),
-  playerId: text("player_id")
-    .notNull()
-    .references(() => players.id),
-  effectiveTime: integer("effective_time").notNull(),
-  mistakes: integer("mistakes").notNull().default(0),
-  ghostRunId: text("ghost_run_id").references(() => ghostRuns.id),
-  completedAt: text("completed_at")
-    .notNull()
-    .default(sql`(datetime('now'))`),
-});
-
+// Async-maintained leaderboard caches — written by background jobs, never in request path.
 export const dailyLeaderboard = sqliteTable("daily_leaderboard", {
   id: text("id").primaryKey(),
   dailyGameId: text("daily_game_id")
@@ -133,6 +96,16 @@ export const rankedLeaderboard = sqliteTable("ranked_leaderboard", {
   forfeits: integer("forfeits").notNull().default(0),
   rank: integer("rank").notNull(),
   computedAt: text("computed_at")
+    .notNull()
+    .default(sql`(datetime('now'))`),
+});
+
+// Routes each player_id to the libsql URL of their user-data pool DB.
+export const userDbRegistry = sqliteTable("user_db_registry", {
+  playerId: text("player_id").primaryKey(),
+  dbUrl: text("db_url").notNull(),
+  poolId: text("pool_id"),
+  createdAt: text("created_at")
     .notNull()
     .default(sql`(datetime('now'))`),
 });

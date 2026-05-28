@@ -2,11 +2,11 @@ import { eq } from "drizzle-orm";
 import type { LibSQLDatabase } from "drizzle-orm/libsql";
 import type { Puzzle, DifficultyTier } from "@/domain/puzzle";
 import type { PuzzleRepository } from "@/repositories/puzzle.repository";
-import { puzzles } from "@/db/schema";
-import type * as schema from "@/db/schema";
+import { puzzles } from "@/db/schema/control";
+import type * as controlSchema from "@/db/schema/control";
 
 export class DrizzlePuzzleRepository implements PuzzleRepository {
-  constructor(private readonly db: LibSQLDatabase<typeof schema>) {}
+  constructor(private readonly db: LibSQLDatabase<typeof controlSchema>) {}
 
   async insert(rows: Omit<Puzzle, "createdAt">[]): Promise<void> {
     await this.db.insert(puzzles).values(rows);

@@ -2,11 +2,11 @@ import { and, asc, eq } from "drizzle-orm";
 import type { LibSQLDatabase } from "drizzle-orm/libsql";
 import type { DailyCompletion } from "@/domain/daily-completion";
 import type { DailyCompletionRepository } from "@/repositories/daily-completion.repository";
-import { dailyCompletions } from "@/db/schema";
-import type * as schema from "@/db/schema";
+import { dailyCompletions } from "@/db/schema/user";
+import type * as userSchema from "@/db/schema/user";
 
 export class DrizzleDailyCompletionRepository implements DailyCompletionRepository {
-  constructor(private readonly db: LibSQLDatabase<typeof schema>) {}
+  constructor(private readonly db: LibSQLDatabase<typeof userSchema>) {}
 
   async insert(completion: Omit<DailyCompletion, "completedAt">): Promise<void> {
     await this.db.insert(dailyCompletions).values(completion);

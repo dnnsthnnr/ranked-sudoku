@@ -1,4 +1,5 @@
 import type { ReplayData } from "@/lib/replay";
+import { computeLeadPct } from "@/lib/lead";
 
 interface LeadBarProps {
   replay: ReplayData;
@@ -15,15 +16,13 @@ export function LeadBar({
   playerFilledCount,
   mistakeCount,
 }: LeadBarProps) {
-  // Fast-forward ghost by the player's accumulated penalty so lead reflects effective time
-  const effectiveElapsedMs = elapsedMs + mistakeCount * 10_000;
-  const ghostFilled = replay.moves.filter(
-    (m) => !m.isMistake && m.timestamp <= effectiveElapsedMs,
-  ).length;
-
-  const playerProgress = totalCells > 0 ? playerFilledCount / totalCells : 0;
-  const ghostProgress = totalCells > 0 ? Math.min(ghostFilled / totalCells, 1) : 0;
-  const leadPct = Math.max(0, Math.min(100, 50 + (playerProgress - ghostProgress) * 50));
+  const leadPct = computeLeadPct(
+    playerFilledCount,
+    totalCells,
+    elapsedMs,
+    mistakeCount,
+    replay.effectiveTime,
+  );
 
   return (
     <div className="w-full max-w-xs flex flex-col gap-1">

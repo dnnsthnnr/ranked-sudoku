@@ -155,8 +155,16 @@ function reducer(state: RaceState, action: Action): RaceState {
       return { ...state, board: newBoard, mistakes: newMistakes, selectedValue: null };
     }
 
-    case "TICK":
-      return { ...state, elapsedMs: action.elapsedMs };
+    case "TICK": {
+      const newElapsedMs = action.elapsedMs;
+      if (state.payload) {
+        const effectiveMs = newElapsedMs + state.mistakeCount * 10_000;
+        if (effectiveMs >= state.payload.ghostRun.effectiveTime) {
+          return { ...state, elapsedMs: newElapsedMs, phase: "finished", outcome: "loss" };
+        }
+      }
+      return { ...state, elapsedMs: newElapsedMs };
+    }
 
     case "FINISH":
       return { ...state, phase: "finished", outcome: action.outcome };

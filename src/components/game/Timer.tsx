@@ -15,7 +15,7 @@ function formatTime(ms: number): string {
 export function Timer({ elapsedMs, mistakeCount }: TimerProps) {
   return (
     <div className="flex items-center gap-3 text-sm font-mono">
-      <span className="text-2xl font-bold tabular-nums">{formatTime(elapsedMs)}</span>
+      <span className="text-2xl font-bold tabular-nums">{formatTime(elapsedMs + mistakeCount * 10_000)}</span>
       <div className="flex items-center gap-1">
         {[0, 1, 2].map((i) => (
           <span

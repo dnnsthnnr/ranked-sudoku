@@ -3,7 +3,7 @@ import type { LibSQLDatabase } from "drizzle-orm/libsql";
 import type { GhostRun } from "@/domain/ghost-run";
 import type { DifficultyTier } from "@/domain/puzzle";
 import type { GhostRunRepository } from "@/repositories/ghost-run.repository";
-import { ghostRuns, puzzles, races } from "@/db/schema";
+import { ghostRuns, puzzles, rankedMatches } from "@/db/schema";
 import type * as schema from "@/db/schema";
 
 export class DrizzleGhostRunRepository implements GhostRunRepository {
@@ -43,13 +43,11 @@ export class DrizzleGhostRunRepository implements GhostRunRepository {
     tier: DifficultyTier,
     playerElo: number,
   ): Promise<GhostRun | null> {
-    // Ghost runs the player has already raced
     const racedIds = this.db
-      .select({ id: races.ghostRunId })
-      .from(races)
-      .where(eq(races.playerId, playerId));
+      .select({ id: rankedMatches.ghostRunId })
+      .from(rankedMatches)
+      .where(eq(rankedMatches.playerId, playerId));
 
-    // Closest Stamped ELO to playerElo, same tier, not already raced, not own runs
     const row = await this.db
       .select({ ghostRuns })
       .from(ghostRuns)
@@ -57,6 +55,7 @@ export class DrizzleGhostRunRepository implements GhostRunRepository {
       .where(
         and(
           eq(puzzles.difficultyTier, tier),
+          eq(ghostRuns.isActiveInPool, true),
           ne(ghostRuns.playerId, playerId),
           notInArray(ghostRuns.id, racedIds),
         ),

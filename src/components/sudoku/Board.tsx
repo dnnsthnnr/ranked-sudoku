@@ -28,7 +28,14 @@ function getHighlighted(selected: number | null): Set<number> {
   return set;
 }
 
-export function Board({ board, given, mistakes, selectedCell, selectedValue, onCellClick }: BoardProps) {
+export function Board({
+  board,
+  given,
+  mistakes,
+  selectedCell,
+  selectedValue,
+  onCellClick,
+}: BoardProps) {
   const highlighted = getHighlighted(selectedCell);
 
   return (

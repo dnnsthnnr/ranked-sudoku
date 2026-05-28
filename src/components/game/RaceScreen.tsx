@@ -35,6 +35,7 @@ interface RaceState {
   board: number[];
   given: boolean[];
   mistakes: Set<number>;
+  mistakeCount: number;
   selectedCell: number | null;
   selectedValue: number | null;
   elapsedMs: number;
@@ -88,6 +89,7 @@ function reducer(state: RaceState, action: Action): RaceState {
         board,
         given,
         mistakes: new Set(),
+        mistakeCount: 0,
         selectedCell: null,
         selectedValue: null,
         elapsedMs: 0,
@@ -130,6 +132,7 @@ function reducer(state: RaceState, action: Action): RaceState {
         ...state,
         board: newBoard,
         mistakes: newMistakes,
+        mistakeCount: state.mistakeCount + (action.isMistake ? 1 : 0),
         selectedValue: action.value,
         playerMoves: [
           ...state.playerMoves,
@@ -174,6 +177,7 @@ const initialState: RaceState = {
   board: [],
   given: [],
   mistakes: new Set(),
+  mistakeCount: 0,
   selectedCell: null,
   selectedValue: null,
   elapsedMs: 0,
@@ -207,7 +211,7 @@ export function RaceScreen() {
     if (state.phase !== "playing") return;
 
     function handleKey(e: KeyboardEvent) {
-      const { selectedCell, given, board, payload, startTime, mistakes } = state;
+      const { selectedCell, given, board, payload, startTime, mistakes, mistakeCount } = state;
       if (selectedCell === null || !payload || startTime === null) return;
       if (given[selectedCell]) return;
 
@@ -226,14 +230,14 @@ export function RaceScreen() {
       dispatch({ type: "ENTER_VALUE", index: selectedCell, value: digit, isMistake, timestamp });
 
       if (isMistake) {
-        if (mistakes.size + 1 >= 3) dispatch({ type: "FINISH", outcome: "loss" });
+        if (mistakeCount + 1 >= 3) dispatch({ type: "FINISH", outcome: "loss" });
         return;
       }
 
       const newBoard = [...board];
       newBoard[selectedCell] = digit;
       if (newBoard.every((v, i) => v === Number(payload.puzzle.solution[i]))) {
-        const effectiveTime = timestamp + mistakes.size * 10_000;
+        const effectiveTime = timestamp + mistakeCount * 10_000;
         dispatch({
           type: "FINISH",
           outcome: effectiveTime <= payload.ghostRun.effectiveTime ? "win" : "loss",
@@ -248,7 +252,7 @@ export function RaceScreen() {
   // Submit on finish
   useEffect(() => {
     if (state.phase !== "finished" || !state.payload) return;
-    const { payload, playerMoves, elapsedMs, mistakes, outcome } = state;
+    const { payload, playerMoves, elapsedMs, mistakeCount, outcome } = state;
     fetch("/api/race/submit", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -256,9 +260,9 @@ export function RaceScreen() {
         ghostRunId: payload.ghostRun.id,
         puzzleId: payload.puzzle.id,
         moves: playerMoves,
-        effectiveTime: elapsedMs + mistakes.size * 10_000,
+        effectiveTime: elapsedMs + mistakeCount * 10_000,
         solvedAt: elapsedMs,
-        mistakes: mistakes.size,
+        mistakes: mistakeCount,
         outcome,
       }),
     }).catch(() => {});
@@ -290,7 +294,7 @@ export function RaceScreen() {
 
   const enterValue = useCallback(
     (n: number) => {
-      const { selectedCell, given, board, payload, startTime, mistakes, phase } = state;
+      const { selectedCell, given, board, payload, startTime, mistakeCount, phase } = state;
       if (phase !== "playing" || selectedCell === null || !payload || startTime === null) return;
       if (given[selectedCell]) return;
       const correctVal = Number(payload.puzzle.solution[selectedCell]);
@@ -298,13 +302,13 @@ export function RaceScreen() {
       const timestamp = Date.now() - startTime;
       dispatch({ type: "ENTER_VALUE", index: selectedCell, value: n, isMistake, timestamp });
       if (isMistake) {
-        if (mistakes.size + 1 >= 3) dispatch({ type: "FINISH", outcome: "loss" });
+        if (mistakeCount + 1 >= 3) dispatch({ type: "FINISH", outcome: "loss" });
         return;
       }
       const newBoard = [...board];
       newBoard[selectedCell] = n;
       if (newBoard.every((v, i) => v === Number(payload.puzzle.solution[i]))) {
-        const effectiveTime = timestamp + mistakes.size * 10_000;
+        const effectiveTime = timestamp + mistakeCount * 10_000;
         dispatch({
           type: "FINISH",
           outcome: effectiveTime <= payload.ghostRun.effectiveTime ? "win" : "loss",
@@ -322,6 +326,7 @@ export function RaceScreen() {
     board,
     given,
     mistakes,
+    mistakeCount,
     selectedCell,
     selectedValue,
     elapsedMs,
@@ -430,7 +435,7 @@ export function RaceScreen() {
 
   // ── Finished ────────────────────────────────────────────────────────────
   if (phase === "finished") {
-    const effectiveTime = elapsedMs + mistakes.size * 10_000;
+    const effectiveTime = elapsedMs + mistakeCount * 10_000;
     return (
       <div className="flex flex-col items-center gap-6">
         <div
@@ -462,7 +467,7 @@ export function RaceScreen() {
   return (
     <div className="flex flex-col items-center gap-6">
       <div className="flex items-center justify-between w-full max-w-xs">
-        <Timer elapsedMs={elapsedMs} mistakeCount={mistakes.size} />
+        <Timer elapsedMs={elapsedMs} mistakeCount={mistakeCount} />
         <span className="text-xs text-gray-400 capitalize">{selectedTier}</span>
       </div>
       <Board
@@ -501,7 +506,7 @@ export function RaceScreen() {
         totalCells={totalCells}
         elapsedMs={elapsedMs}
         playerFilledCount={playerFilledCount}
-        mistakeCount={mistakes.size}
+        mistakeCount={mistakeCount}
       />
     </div>
   );

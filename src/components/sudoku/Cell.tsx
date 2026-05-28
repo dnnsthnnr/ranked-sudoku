@@ -8,7 +8,15 @@ interface CellProps {
   onClick: () => void;
 }
 
-export function Cell({ value, isGiven, isSelected, isMistake, isHighlighted, isSameValue, onClick }: CellProps) {
+export function Cell({
+  value,
+  isGiven,
+  isSelected,
+  isMistake,
+  isHighlighted,
+  isSameValue,
+  onClick,
+}: CellProps) {
   let bg = "bg-white";
   if (isSelected) bg = "bg-blue-300";
   else if (isMistake) bg = "bg-red-100";

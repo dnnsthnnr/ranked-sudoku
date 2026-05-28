@@ -8,10 +8,18 @@ interface LeadBarProps {
   mistakeCount: number;
 }
 
-export function LeadBar({ replay, totalCells, elapsedMs, playerFilledCount, mistakeCount }: LeadBarProps) {
+export function LeadBar({
+  replay,
+  totalCells,
+  elapsedMs,
+  playerFilledCount,
+  mistakeCount,
+}: LeadBarProps) {
   // Fast-forward ghost by the player's accumulated penalty so lead reflects effective time
   const effectiveElapsedMs = elapsedMs + mistakeCount * 10_000;
-  const ghostFilled = replay.moves.filter((m) => !m.isMistake && m.timestamp <= effectiveElapsedMs).length;
+  const ghostFilled = replay.moves.filter(
+    (m) => !m.isMistake && m.timestamp <= effectiveElapsedMs,
+  ).length;
 
   const playerProgress = totalCells > 0 ? playerFilledCount / totalCells : 0;
   const ghostProgress = totalCells > 0 ? Math.min(ghostFilled / totalCells, 1) : 0;

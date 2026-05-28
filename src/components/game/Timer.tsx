@@ -14,13 +14,18 @@ function formatTime(ms: number): string {
 
 export function Timer({ elapsedMs, mistakeCount }: TimerProps) {
   return (
-    <div className="flex items-center gap-4 text-sm font-mono">
+    <div className="flex items-center gap-3 text-sm font-mono">
       <span className="text-2xl font-bold tabular-nums">{formatTime(elapsedMs)}</span>
-      {mistakeCount > 0 && (
-        <span className="text-red-600 font-medium">
-          +{mistakeCount * 10}s penalty ({mistakeCount}/3 mistakes)
-        </span>
-      )}
+      <div className="flex items-center gap-1">
+        {[0, 1, 2].map((i) => (
+          <span
+            key={i}
+            className={`text-base font-bold leading-none select-none ${i < mistakeCount ? "text-red-500" : "text-gray-200"}`}
+          >
+            ✕
+          </span>
+        ))}
+      </div>
     </div>
   );
 }

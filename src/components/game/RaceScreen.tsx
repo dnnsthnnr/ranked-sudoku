@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useReducer } from "react";
 import { Board } from "@/components/sudoku/Board";
 import { Timer } from "@/components/game/Timer";
-import { OpponentProgress } from "@/components/game/OpponentProgress";
+import { LeadBar } from "@/components/game/LeadBar";
 import type { ReplayData, ReplayMove } from "@/lib/replay";
 import type { DifficultyTier } from "@/domain/puzzle";
 
@@ -36,6 +36,7 @@ interface RaceState {
   given: boolean[];
   mistakes: Set<number>;
   selectedCell: number | null;
+  selectedValue: number | null;
   elapsedMs: number;
   startTime: number | null;
   outcome: "win" | "loss" | null;
@@ -51,6 +52,7 @@ type Action =
   | { type: "LOAD_RACE_SUCCESS"; payload: RacePayload }
   | { type: "LOAD_ERROR"; error: string }
   | { type: "SELECT_CELL"; index: number }
+  | { type: "SELECT_VALUE"; value: number }
   | { type: "ENTER_VALUE"; index: number; value: number; isMistake: boolean; timestamp: number }
   | { type: "ERASE"; index: number }
   | { type: "TICK"; elapsedMs: number }
@@ -87,6 +89,7 @@ function reducer(state: RaceState, action: Action): RaceState {
         given,
         mistakes: new Set(),
         selectedCell: null,
+        selectedValue: null,
         elapsedMs: 0,
         startTime: Date.now(),
         outcome: null,
@@ -102,8 +105,17 @@ function reducer(state: RaceState, action: Action): RaceState {
         error: action.error,
       };
 
-    case "SELECT_CELL":
-      return { ...state, selectedCell: action.index };
+    case "SELECT_CELL": {
+      const cellValue = state.board[action.index];
+      return {
+        ...state,
+        selectedCell: action.index,
+        selectedValue: cellValue !== 0 ? cellValue : state.selectedValue,
+      };
+    }
+
+    case "SELECT_VALUE":
+      return { ...state, selectedValue: action.value };
 
     case "ENTER_VALUE": {
       const newBoard = [...state.board];
@@ -118,6 +130,7 @@ function reducer(state: RaceState, action: Action): RaceState {
         ...state,
         board: newBoard,
         mistakes: newMistakes,
+        selectedValue: action.value,
         playerMoves: [
           ...state.playerMoves,
           {
@@ -136,7 +149,7 @@ function reducer(state: RaceState, action: Action): RaceState {
       newBoard[action.index] = 0;
       const newMistakes = new Set(state.mistakes);
       newMistakes.delete(action.index);
-      return { ...state, board: newBoard, mistakes: newMistakes };
+      return { ...state, board: newBoard, mistakes: newMistakes, selectedValue: null };
     }
 
     case "TICK":
@@ -162,6 +175,7 @@ const initialState: RaceState = {
   given: [],
   mistakes: new Set(),
   selectedCell: null,
+  selectedValue: null,
   elapsedMs: 0,
   startTime: null,
   outcome: null,
@@ -309,6 +323,7 @@ export function RaceScreen() {
     given,
     mistakes,
     selectedCell,
+    selectedValue,
     elapsedMs,
     outcome,
     error,
@@ -438,6 +453,11 @@ export function RaceScreen() {
     );
   }
 
+  const completedNumbers = new Set<number>();
+  for (let n = 1; n <= 9; n++) {
+    if (board.filter((v, i) => v === n && !mistakes.has(i)).length === 9) completedNumbers.add(n);
+  }
+
   // ── Playing ─────────────────────────────────────────────────────────────
   return (
     <div className="flex flex-col items-center gap-6">
@@ -450,25 +470,38 @@ export function RaceScreen() {
         given={given}
         mistakes={mistakes}
         selectedCell={selectedCell}
+        selectedValue={selectedValue}
         onCellClick={(idx) => dispatch({ type: "SELECT_CELL", index: idx })}
       />
       <div className="flex gap-2">
-        {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => (
-          <button
-            key={n}
-            type="button"
-            onClick={() => enterValue(n)}
-            className="w-9 h-9 bg-gray-100 hover:bg-gray-200 rounded-lg font-semibold text-gray-800 transition-colors"
-          >
-            {n}
-          </button>
-        ))}
+        {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => {
+          const isComplete = completedNumbers.has(n);
+          return (
+            <button
+              key={n}
+              type="button"
+              onClick={() => {
+                dispatch({ type: "SELECT_VALUE", value: n });
+                enterValue(n);
+              }}
+              disabled={isComplete}
+              className={`w-9 h-9 rounded-lg font-semibold transition-colors ${
+                isComplete
+                  ? "bg-gray-100 text-gray-400 opacity-30 cursor-not-allowed"
+                  : "bg-gray-100 hover:bg-gray-200 text-gray-800"
+              }`}
+            >
+              {n}
+            </button>
+          );
+        })}
       </div>
-      <OpponentProgress
+      <LeadBar
         replay={payload.replay}
         totalCells={totalCells}
         elapsedMs={elapsedMs}
         playerFilledCount={playerFilledCount}
+        mistakeCount={mistakes.size}
       />
     </div>
   );

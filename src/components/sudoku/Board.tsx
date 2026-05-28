@@ -5,6 +5,7 @@ interface BoardProps {
   given: boolean[];
   mistakes: Set<number>;
   selectedCell: number | null;
+  selectedValue: number | null;
   onCellClick: (index: number) => void;
 }
 
@@ -27,7 +28,7 @@ function getHighlighted(selected: number | null): Set<number> {
   return set;
 }
 
-export function Board({ board, given, mistakes, selectedCell, onCellClick }: BoardProps) {
+export function Board({ board, given, mistakes, selectedCell, selectedValue, onCellClick }: BoardProps) {
   const highlighted = getHighlighted(selectedCell);
 
   return (
@@ -38,6 +39,11 @@ export function Board({ board, given, mistakes, selectedCell, onCellClick }: Boa
         // Thicker borders to delineate 3×3 boxes
         const borderRight = col === 2 || col === 5 ? "border-r-2 border-r-gray-800" : "";
         const borderBottom = row === 2 || row === 5 ? "border-b-2 border-b-gray-800" : "";
+        const isSameValue =
+          selectedValue !== null &&
+          value === selectedValue &&
+          selectedCell !== idx &&
+          !mistakes.has(idx);
 
         return (
           <div key={idx} className={`${borderRight} ${borderBottom}`}>
@@ -47,6 +53,7 @@ export function Board({ board, given, mistakes, selectedCell, onCellClick }: Boa
               isSelected={selectedCell === idx}
               isMistake={mistakes.has(idx)}
               isHighlighted={highlighted.has(idx) && selectedCell !== idx}
+              isSameValue={isSameValue}
               onClick={() => onCellClick(idx)}
             />
           </div>

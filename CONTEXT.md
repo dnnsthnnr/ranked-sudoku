@@ -51,7 +51,31 @@ A registered user who participates in Races and has an ELO rating.
 
 ---
 
-# Testing Strategy
+# UI Conventions
+
+## Mistake indicator (top bar)
+
+During a game, the top bar shows three ✕ icons next to the timer. Each icon fills red as a mistake is made. At 3 red crosses the game ends as a loss. Empty crosses are rendered in light grey so the "3 lives" structure is always visible.
+
+## Lead bar (Race mode)
+
+Replaces the old dual progress bars. A single horizontal tug-of-war bar starts at 50 %:
+
+- **Blue (left)** grows when the player is ahead.
+- **Orange (right)** dominates when the ghost is ahead.
+- A fixed grey centre line marks the 50 % axis.
+
+The ghost's replay position is computed against the player's **effective elapsed time** (`rawElapsed + mistakes × 10 s`). This means each mistake immediately fast-forwards the ghost by 10 s in the bar, giving instant visual feedback of the penalty's impact on the race lead.
+
+## Number pad
+
+### Same-value highlighting
+
+Clicking a cell that contains a digit, or pressing a number button, sets a "selected value." All other board cells that contain the same digit are highlighted in amber (`bg-yellow-100`). Highlight priority: selected cell (blue) > mistake cell (red) > same-value (amber) > row/col/box region (light blue) > default.
+
+### Completed-number disabling
+
+When all 9 instances of a digit are correctly placed on the board (i.e. the digit appears 9 times and none of those cells are in the mistake set), the corresponding number button is rendered at 30 % opacity with `cursor-not-allowed` and is disabled. This prevents accidental over-entry and gives a clear visual signal that the digit is solved.
 
 Tests prefer integration and full use-case coverage over isolated unit tests. The guiding principle is: test the behaviour the application actually relies on, not the internal mechanics of individual functions.
 

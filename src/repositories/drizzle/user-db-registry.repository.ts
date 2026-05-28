@@ -8,23 +8,20 @@ import type * as controlSchema from "@/db/schema/control";
 export class DrizzleUserDbRegistryRepository implements UserDbRegistryRepository {
   constructor(private readonly db: LibSQLDatabase<typeof controlSchema>) {}
 
-  async register(playerId: string, dbUrl: string, poolId: string | null = null): Promise<void> {
-    await this.db
-      .insert(userDbRegistry)
-      .values({ playerId, dbUrl, poolId })
-      .onConflictDoUpdate({ target: userDbRegistry.playerId, set: { dbUrl, poolId } });
+  async create(dbUrl: string, encryptedToken: string): Promise<string> {
+    const id = crypto.randomUUID();
+    await this.db.insert(userDbRegistry).values({ id, dbUrl, encryptedToken });
+    return id;
   }
 
-  async findByPlayer(playerId: string): Promise<UserDbRegistry | null> {
+  async findById(id: string): Promise<UserDbRegistry | null> {
     const row = await this.db.query.userDbRegistry.findFirst({
-      where: eq(userDbRegistry.playerId, playerId),
+      where: eq(userDbRegistry.id, id),
     });
     return row ?? null;
   }
 
-  async listByPool(poolId: string): Promise<UserDbRegistry[]> {
-    return this.db.query.userDbRegistry.findMany({
-      where: eq(userDbRegistry.poolId, poolId),
-    });
+  async listAll(): Promise<UserDbRegistry[]> {
+    return this.db.query.userDbRegistry.findMany();
   }
 }

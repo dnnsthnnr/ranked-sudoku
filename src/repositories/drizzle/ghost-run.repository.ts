@@ -3,15 +3,15 @@ import type { LibSQLDatabase } from "drizzle-orm/libsql";
 import type { GhostRun } from "@/domain/ghost-run";
 import type { DifficultyTier } from "@/domain/puzzle";
 import type { GhostRunRepository } from "@/repositories/ghost-run.repository";
+import type { PlayerDbResolver } from "@/db/client";
 import { ghostRuns, puzzles } from "@/db/schema/control";
 import { rankedMatches } from "@/db/schema/user";
 import type * as controlSchema from "@/db/schema/control";
-import type * as userSchema from "@/db/schema/user";
 
 export class DrizzleGhostRunRepository implements GhostRunRepository {
   constructor(
     private readonly db: LibSQLDatabase<typeof controlSchema>,
-    private readonly userDb: LibSQLDatabase<typeof userSchema>,
+    private readonly getPlayerDb: PlayerDbResolver,
   ) {}
 
   async insert(ghostRun: Omit<GhostRun, "createdAt">): Promise<void> {
@@ -48,8 +48,8 @@ export class DrizzleGhostRunRepository implements GhostRunRepository {
     tier: DifficultyTier,
     playerElo: number,
   ): Promise<GhostRun | null> {
-    // Fetch already-raced IDs from the user DB (cross-plane — can't subquery).
-    const racedRows = await this.userDb
+    const userDb = await this.getPlayerDb(playerId);
+    const racedRows = await userDb
       .select({ ghostRunId: rankedMatches.ghostRunId })
       .from(rankedMatches)
       .where(eq(rankedMatches.playerId, playerId));

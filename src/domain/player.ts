@@ -12,6 +12,7 @@ export interface Player {
   displayName?: string | null;
   elo: number;
   raceCount: number;
+  userDbId: string;
   skillLevel: SkillLevel;
   createdAt: string;
   updatedAt: string;

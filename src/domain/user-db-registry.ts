@@ -1,6 +1,6 @@
 export interface UserDbRegistry {
-  playerId: string;
+  id: string;
   dbUrl: string;
-  poolId: string | null;
+  encryptedToken: string;
   createdAt: string;
 }

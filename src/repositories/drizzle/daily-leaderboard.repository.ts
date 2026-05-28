@@ -3,28 +3,33 @@ import { randomUUID } from "node:crypto";
 import type { LibSQLDatabase } from "drizzle-orm/libsql";
 import type { DailyLeaderboardEntry } from "@/domain/daily-leaderboard-entry";
 import type { DailyLeaderboardRepository } from "@/repositories/daily-leaderboard.repository";
+import type { AllUserDbsResolver } from "@/db/client";
 import { dailyLeaderboard, players } from "@/db/schema/control";
 import { dailyCompletions } from "@/db/schema/user";
 import type * as controlSchema from "@/db/schema/control";
-import type * as userSchema from "@/db/schema/user";
 
 export class DrizzleDailyLeaderboardRepository implements DailyLeaderboardRepository {
   constructor(
     private readonly controlDb: LibSQLDatabase<typeof controlSchema>,
-    private readonly userDb: LibSQLDatabase<typeof userSchema>,
+    private readonly getAllUserDbs: AllUserDbsResolver,
   ) {}
 
   async recomputeForGame(dailyGameId: string): Promise<void> {
-    // Read completions from user DB, ordered by effective time.
-    const completions = await this.userDb
-      .select({
-        playerId: dailyCompletions.playerId,
-        effectiveTime: dailyCompletions.effectiveTime,
-        mistakes: dailyCompletions.mistakes,
-      })
-      .from(dailyCompletions)
-      .where(eq(dailyCompletions.dailyGameId, dailyGameId))
-      .orderBy(asc(dailyCompletions.effectiveTime));
+    const dbs = await this.getAllUserDbs();
+    const perDbResults = await Promise.all(
+      dbs.map((db) =>
+        db
+          .select({
+            playerId: dailyCompletions.playerId,
+            effectiveTime: dailyCompletions.effectiveTime,
+            mistakes: dailyCompletions.mistakes,
+          })
+          .from(dailyCompletions)
+          .where(eq(dailyCompletions.dailyGameId, dailyGameId)),
+      ),
+    );
+
+    const completions = perDbResults.flat().sort((a, b) => a.effectiveTime - b.effectiveTime);
 
     if (completions.length === 0) {
       await this.controlDb
@@ -33,7 +38,6 @@ export class DrizzleDailyLeaderboardRepository implements DailyLeaderboardReposi
       return;
     }
 
-    // Fetch display names from control DB.
     const playerIds = completions.map((c) => c.playerId);
     const playerRows = await this.controlDb
       .select({ id: players.id, displayName: players.displayName })

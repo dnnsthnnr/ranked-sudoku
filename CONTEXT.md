@@ -32,7 +32,7 @@ A self-reported knowledge level chosen by a player during onboarding: No Experie
 | Experienced    | 1000         |
 
 ## Daily Game
-A standard 9×9 puzzle published daily at three difficulty tiers (Easy, Medium, Hard). Players choose which tier to play. Completing a Daily Game produces a Seed Run for that tier's matchmaking pool and posts the player's Effective Time to the Daily Leaderboard. Daily Games do not affect ELO.
+A standard 9×9 puzzle published daily at four difficulty tiers (Easy, Medium, Hard, Expert). Players choose which tier to play. Completing a Daily Game produces a Seed Run for that tier's matchmaking pool and posts the player's Effective Time to the Daily Leaderboard. Daily Games do not affect ELO.
 
 ## Difficulty Tier
 One of four levels — Easy, Medium, Hard, Expert — that classify both puzzles and Ghost Runs. Matchmaking only pairs players with Ghost Runs of the same Difficulty Tier. Tier assignment is determined by the hardest solving technique required to complete the puzzle without guessing: Easy requires only naked singles; Medium adds hidden singles and pointing pairs; Hard adds naked and hidden pairs and triples; Expert requires X-wing, swordfish, chains, or forcing chains.

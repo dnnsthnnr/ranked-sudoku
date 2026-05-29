@@ -49,3 +49,8 @@ export function computeEffectiveTime(moves: ReplayMove[]): number {
   const lastCorrect = [...moves].findLast((m) => !m.isMistake);
   return (lastCorrect?.timestamp ?? 0) + mistakes * MISTAKE_PENALTY_MS;
 }
+
+/** Converts a raw elapsed time and mistake count into effective elapsed time. */
+export function toEffectiveMs(rawMs: number, mistakeCount: number): number {
+  return rawMs + mistakeCount * MISTAKE_PENALTY_MS;
+}

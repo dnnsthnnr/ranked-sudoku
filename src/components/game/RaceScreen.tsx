@@ -6,7 +6,7 @@ import { Timer } from "@/components/game/Timer";
 import { LeadBar } from "@/components/game/LeadBar";
 import {
   computeEffectiveTime,
-  MISTAKE_PENALTY_MS,
+  toEffectiveMs,
   type ReplayData,
   type ReplayMove,
 } from "@/lib/replay";
@@ -163,7 +163,7 @@ function reducer(state: RaceState, action: Action): RaceState {
     case "TICK": {
       const newElapsedMs = action.elapsedMs;
       if (state.payload) {
-        const effectiveMs = newElapsedMs + state.mistakeCount * MISTAKE_PENALTY_MS;
+        const effectiveMs = toEffectiveMs(newElapsedMs, state.mistakeCount);
         if (effectiveMs >= state.payload.replay.effectiveTime) {
           return { ...state, elapsedMs: newElapsedMs, phase: "finished", outcome: "loss" };
         }
@@ -250,7 +250,7 @@ export function RaceScreen() {
       const newBoard = [...board];
       newBoard[selectedCell] = digit;
       if (newBoard.every((v, i) => v === Number(payload.puzzle.solution[i]))) {
-        const effectiveTime = timestamp + mistakeCount * MISTAKE_PENALTY_MS;
+        const effectiveTime = toEffectiveMs(timestamp, mistakeCount);
         dispatch({
           type: "FINISH",
           outcome: effectiveTime <= payload.replay.effectiveTime ? "win" : "loss",
@@ -321,7 +321,7 @@ export function RaceScreen() {
       const newBoard = [...board];
       newBoard[selectedCell] = n;
       if (newBoard.every((v, i) => v === Number(payload.puzzle.solution[i]))) {
-        const effectiveTime = timestamp + mistakeCount * MISTAKE_PENALTY_MS;
+        const effectiveTime = toEffectiveMs(timestamp, mistakeCount);
         dispatch({
           type: "FINISH",
           outcome: effectiveTime <= payload.replay.effectiveTime ? "win" : "loss",

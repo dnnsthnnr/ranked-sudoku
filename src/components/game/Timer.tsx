@@ -1,4 +1,4 @@
-import { MISTAKE_PENALTY_MS } from "@/lib/replay";
+import { toEffectiveMs } from "@/lib/replay";
 
 interface TimerProps {
   elapsedMs: number;
@@ -18,7 +18,7 @@ export function Timer({ elapsedMs, mistakeCount }: TimerProps) {
   return (
     <div className="flex items-center gap-3 text-sm font-mono">
       <span className="text-2xl font-bold tabular-nums">
-        {formatTime(elapsedMs + mistakeCount * MISTAKE_PENALTY_MS)}
+        {formatTime(toEffectiveMs(elapsedMs, mistakeCount))}
       </span>
       <div className="flex items-center gap-1">
         {[0, 1, 2].map((i) => (

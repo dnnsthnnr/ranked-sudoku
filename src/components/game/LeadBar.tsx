@@ -1,4 +1,4 @@
-import { countGhostFillsAt, MISTAKE_PENALTY_MS, type ReplayData } from "@/lib/replay";
+import { countGhostFillsAt, toEffectiveMs, type ReplayData } from "@/lib/replay";
 import { computeLeadPct } from "@/lib/lead";
 
 interface LeadBarProps {
@@ -16,7 +16,7 @@ export function LeadBar({
   playerFilledCount,
   mistakeCount,
 }: LeadBarProps) {
-  const playerEffectiveMs = elapsedMs + mistakeCount * MISTAKE_PENALTY_MS;
+  const playerEffectiveMs = toEffectiveMs(elapsedMs, mistakeCount);
   const ghostFilled = countGhostFillsAt(replay.moves, playerEffectiveMs);
   const leadPct = computeLeadPct(playerFilledCount, totalCells, ghostFilled);
 

@@ -390,7 +390,7 @@ export function RaceScreen() {
         <div className="flex flex-col items-center gap-2">
           <p className="text-sm font-medium text-gray-600">Select difficulty</p>
           <div className="flex gap-2">
-            {(["easy", "medium", "hard"] as DifficultyTier[]).map((tier) => (
+            {(["easy", "medium", "hard", "expert"] as DifficultyTier[]).map((tier) => (
               <button
                 key={tier}
                 type="button"

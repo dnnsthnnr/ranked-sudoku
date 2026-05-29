@@ -30,9 +30,7 @@ function isCompleteGroup(group: number[]): boolean {
 }
 
 function isValidSolution(grid: string): boolean {
-  return (
-    [...rows(grid), ...cols(grid), ...boxes(grid)].every(isCompleteGroup)
-  );
+  return [...rows(grid), ...cols(grid), ...boxes(grid)].every(isCompleteGroup);
 }
 
 // Minimal backtracking solver — counts solutions up to `limit`
@@ -68,7 +66,7 @@ function countSolutions(cells: number[], limit = 2): number {
   return count;
 }
 
-const CLUE_COUNTS: Record<DifficultyTier, number> = { easy: 38, medium: 30, hard: 23 };
+const VALID_TIERS: DifficultyTier[] = ["easy", "medium", "hard", "expert"];
 
 // ---------------------------------------------------------------------------
 // generateSolved
@@ -97,26 +95,23 @@ describe("generateSolved", () => {
   });
 
   it("produces different grids on successive calls", () => {
-    // Probability of a collision is astronomically low (~1 in 6.7×10²¹)
     expect(generateSolved()).not.toBe(generateSolved());
   });
 });
 
 // ---------------------------------------------------------------------------
-// generatePuzzle — shared properties across tiers
+// generatePuzzle — returns tier and score alongside grid/solution
 // ---------------------------------------------------------------------------
 
-describe.each<DifficultyTier>(["easy", "medium", "hard"])("generatePuzzle('%s')", (tier) => {
+describe("generatePuzzle", () => {
   let grid: string;
   let solution: string;
+  let tier: DifficultyTier;
+  let score: number;
 
-  beforeAll(
-    async () => {
-      ({ grid, solution } = generatePuzzle(tier));
-    },
-    // Hard puzzles can take several seconds due to uniqueness-checking backtracking
-    tier === "hard" ? 60_000 : 15_000,
-  );
+  beforeAll(async () => {
+    ({ grid, solution, tier, score } = generatePuzzle());
+  }, 60_000);
 
   it("returns 81-character strings for both grid and solution", () => {
     expect(grid).toHaveLength(81);
@@ -125,15 +120,6 @@ describe.each<DifficultyTier>(["easy", "medium", "hard"])("generatePuzzle('%s')"
 
   it("solution is a valid complete sudoku", () => {
     expect(isValidSolution(solution)).toBe(true);
-  });
-
-  it(`grid has at least ${CLUE_COUNTS[tier]} filled cells (target clue count)`, () => {
-    // The generator removes clues while maintaining a unique solution.
-    // It always reaches the target for easy/medium, but for hard some puzzle
-    // layouts cannot be reduced all the way to 23 without creating ambiguity,
-    // so the result is >= target (never fewer clues than intended).
-    const clues = grid.split("").filter((c) => c !== "0").length;
-    expect(clues).toBeGreaterThanOrEqual(CLUE_COUNTS[tier]);
   });
 
   it("grid cells contain only digits 0–9", () => {
@@ -152,22 +138,48 @@ describe.each<DifficultyTier>(["easy", "medium", "hard"])("generatePuzzle('%s')"
     const cells = grid.split("").map(Number);
     expect(countSolutions(cells)).toBe(1);
   });
+
+  it("tier is a valid difficulty tier", () => {
+    expect(VALID_TIERS).toContain(tier);
+  });
+
+  it("score is a non-negative integer", () => {
+    expect(score).toBeGreaterThanOrEqual(0);
+    expect(Number.isInteger(score)).toBe(true);
+  });
 });
 
 // ---------------------------------------------------------------------------
-// removeClues — clue-count contract per tier
+// generatePuzzle with target clue count hint
+// ---------------------------------------------------------------------------
+
+describe("generatePuzzle with clue hint", () => {
+  it("respects target clue count when possible (40 clues → easy-range puzzle)", () => {
+    const { grid, tier, score } = generatePuzzle(40);
+    const clues = grid.split("").filter((c) => c !== "0").length;
+    expect(clues).toBeGreaterThanOrEqual(40);
+    expect(["easy", "medium"] as DifficultyTier[]).toContain(tier);
+    expect(score).toBeGreaterThanOrEqual(0);
+  }, 30_000);
+});
+
+// ---------------------------------------------------------------------------
+// removeClues — clue-count contract
 // ---------------------------------------------------------------------------
 
 describe("removeClues", () => {
-  it.each(["easy", "medium", "hard"] as DifficultyTier[])(
-    "produces exactly %s clue count from a known solution",
-    (tier) => {
-      // Use a fixed valid solution so this test is fast (no generation overhead)
-      const solution = generateSolved();
-      const puzzle = removeClues(solution, tier);
-      const clues = puzzle.split("").filter((c) => c !== "0").length;
-      expect(clues).toBeGreaterThanOrEqual(CLUE_COUNTS[tier]);
-    },
-    60_000,
-  );
+  it("removes clues to at least the target count from a known solution", () => {
+    const solution = generateSolved();
+    const targetClues = 30;
+    const puzzle = removeClues(solution, targetClues);
+    const clues = puzzle.split("").filter((c) => c !== "0").length;
+    expect(clues).toBeGreaterThanOrEqual(targetClues);
+  }, 60_000);
+
+  it("maintains a uniquely solvable puzzle after clue removal", () => {
+    const solution = generateSolved();
+    const puzzle = removeClues(solution, 35);
+    const cells = puzzle.split("").map(Number);
+    expect(countSolutions(cells)).toBe(1);
+  }, 60_000);
 });

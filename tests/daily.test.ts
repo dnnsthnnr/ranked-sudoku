@@ -7,7 +7,7 @@ import { createTestDb } from "./helpers/db";
 describe("pickTierForDate", () => {
   it("returns a valid difficulty tier", () => {
     const tier = pickTierForDate("2026-05-27");
-    expect(["easy", "medium", "hard"]).toContain(tier);
+    expect(["easy", "medium", "hard", "expert"]).toContain(tier);
   });
 
   it("is deterministic — same date always produces the same tier", () => {
@@ -15,16 +15,16 @@ describe("pickTierForDate", () => {
     expect(pickTierForDate(date)).toBe(pickTierForDate(date));
   });
 
-  it("produces different tiers for different dates", () => {
-    // Generate 90 consecutive dates and verify all three tiers appear
+  it("produces different tiers for different dates and covers all four", () => {
     const tiers = new Set<string>();
-    for (let i = 0; i < 90; i++) {
+    for (let i = 0; i < 120; i++) {
       const d = new Date(2026, 0, 1 + i);
       tiers.add(pickTierForDate(d.toISOString().split("T")[0]));
     }
     expect(tiers).toContain("easy");
     expect(tiers).toContain("medium");
     expect(tiers).toContain("hard");
+    expect(tiers).toContain("expert");
   });
 });
 
@@ -40,7 +40,7 @@ describe("Daily puzzle flow", () => {
 
   it("stores and retrieves a daily game for a given date and tier", async () => {
     await puzzleRepo.insert([
-      { id: "p-daily-1", grid: "1".repeat(81), solution: "2".repeat(81), difficultyTier: "medium" },
+      { id: "p-daily-1", grid: "1".repeat(81), solution: "2".repeat(81), difficultyTier: "medium", puzzleScore: 0 },
     ]);
     await dailyGameRepo.insert({ id: "dg-1", puzzleId: "p-daily-1", tier: "medium", date: "2026-05-27" });
 
@@ -60,7 +60,7 @@ describe("Daily puzzle flow", () => {
     const tier = pickTierForDate(date);
 
     await puzzleRepo.insert([
-      { id: "p-daily-2", grid: "3".repeat(81), solution: "4".repeat(81), difficultyTier: tier },
+      { id: "p-daily-2", grid: "3".repeat(81), solution: "4".repeat(81), difficultyTier: tier, puzzleScore: 0 },
     ]);
     await dailyGameRepo.insert({ id: "dg-2", puzzleId: "p-daily-2", tier, date });
 
@@ -75,5 +75,16 @@ describe("Daily puzzle flow", () => {
     // "2026-05-27" was seeded as "medium" above; querying "easy" should return null
     const result = await dailyGameRepo.findByDate("2026-05-27", "easy");
     expect(result).toBeNull();
+  });
+
+  it("stores and retrieves an expert daily game", async () => {
+    await puzzleRepo.insert([
+      { id: "p-expert-1", grid: "5".repeat(81), solution: "6".repeat(81), difficultyTier: "expert", puzzleScore: 120 },
+    ]);
+    await dailyGameRepo.insert({ id: "dg-expert-1", puzzleId: "p-expert-1", tier: "expert", date: "2026-07-01" });
+
+    const result = await dailyGameRepo.findByDate("2026-07-01", "expert");
+    expect(result).not.toBeNull();
+    expect(result?.tier).toBe("expert");
   });
 });

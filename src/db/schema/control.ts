@@ -10,8 +10,9 @@ export const puzzles = sqliteTable("puzzles", {
   grid: text("grid").notNull(),
   solution: text("solution").notNull(),
   difficultyTier: text("difficulty_tier", {
-    enum: ["easy", "medium", "hard"],
+    enum: ["easy", "medium", "hard", "expert"],
   }).notNull(),
+  puzzleScore: integer("puzzle_score").notNull().default(0),
   createdAt: text("created_at")
     .notNull()
     .default(sql`(datetime('now'))`),
@@ -41,7 +42,7 @@ export const dailyGames = sqliteTable("daily_games", {
   puzzleId: text("puzzle_id")
     .notNull()
     .references(() => puzzles.id),
-  tier: text("tier", { enum: ["easy", "medium", "hard"] }).notNull(),
+  tier: text("tier", { enum: ["easy", "medium", "hard", "expert"] }).notNull(),
   date: text("date").notNull(),
   createdAt: text("created_at")
     .notNull()

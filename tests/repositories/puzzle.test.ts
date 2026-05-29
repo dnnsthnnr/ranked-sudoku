@@ -12,7 +12,7 @@ describe("DrizzlePuzzleRepository", () => {
 
   it("inserts and retrieves a puzzle by id", async () => {
     await repo.insert([
-      { id: "p1", grid: "1".repeat(81), solution: "2".repeat(81), difficultyTier: "easy" },
+      { id: "p1", grid: "1".repeat(81), solution: "2".repeat(81), difficultyTier: "easy", puzzleScore: 0 },
     ]);
     const result = await repo.findById("p1");
     expect(result?.id).toBe("p1");
@@ -26,8 +26,8 @@ describe("DrizzlePuzzleRepository", () => {
 
   it("filters puzzles by difficulty tier", async () => {
     await repo.insert([
-      { id: "p2", grid: "3".repeat(81), solution: "4".repeat(81), difficultyTier: "hard" },
-      { id: "p3", grid: "5".repeat(81), solution: "6".repeat(81), difficultyTier: "easy" },
+      { id: "p2", grid: "3".repeat(81), solution: "4".repeat(81), difficultyTier: "hard", puzzleScore: 80 },
+      { id: "p3", grid: "5".repeat(81), solution: "6".repeat(81), difficultyTier: "easy", puzzleScore: 5 },
     ]);
     const hard = await repo.findByDifficulty("hard");
     expect(hard.every((p) => p.difficultyTier === "hard")).toBe(true);

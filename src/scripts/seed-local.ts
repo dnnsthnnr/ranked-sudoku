@@ -35,6 +35,7 @@ const TIMING: Record<DifficultyTier, { mean: number; std: number }> = {
   easy: { mean: 4_000, std: 2_000 },
   medium: { mean: 7_000, std: 3_000 },
   hard: { mean: 12_000, std: 5_000 },
+  expert: { mean: 22_000, std: 8_000 },
 };
 
 function generateGhostMoves(
@@ -106,15 +107,25 @@ async function main() {
   console.log("Bot player ready.");
 
   const today = todayISO();
-  const tiers: DifficultyTier[] = ["easy", "medium", "hard"];
+  const tiers: DifficultyTier[] = ["easy", "medium", "hard", "expert"];
 
   for (const tier of tiers) {
     console.log(`Generating ${tier} puzzle...`);
-    const { grid, solution } = generatePuzzle(tier);
+    const clueHints: Record<DifficultyTier, number> = {
+      easy: 40,
+      medium: 32,
+      hard: 26,
+      expert: 22,
+    };
+    let result = generatePuzzle(clueHints[tier]);
+    while (result.tier !== tier) result = generatePuzzle(clueHints[tier]);
+    const { grid, solution, score } = result;
     const puzzleId = randomUUID();
     const ghostRunId = randomUUID();
 
-    await puzzleRepo.insert([{ id: puzzleId, grid, solution, difficultyTier: tier }]);
+    await puzzleRepo.insert([
+      { id: puzzleId, grid, solution, difficultyTier: tier, puzzleScore: score },
+    ]);
     await dailyGameRepo.insert({ id: randomUUID(), puzzleId, tier, date: today });
 
     const { moves, solvedAt, mistakeCount } = generateGhostMoves(grid, solution, tier);

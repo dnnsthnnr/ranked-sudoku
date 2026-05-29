@@ -1,10 +1,5 @@
 import type { DifficultyTier } from "@/domain/puzzle";
-
-const CLUE_COUNTS: Record<DifficultyTier, number> = {
-  easy: 38,
-  medium: 30,
-  hard: 23,
-};
+import { scorePuzzle } from "./difficulty";
 
 function shuffle<T>(arr: T[]): T[] {
   for (let i = arr.length - 1; i > 0; i--) {
@@ -64,9 +59,8 @@ export function generateSolved(): string {
   return grid.join("");
 }
 
-export function removeClues(solution: string, tier: DifficultyTier): string {
+export function removeClues(solution: string, targetClues: number): string {
   const grid = solution.split("").map(Number);
-  const targetClues = CLUE_COUNTS[tier];
   const toRemove = 81 - targetClues;
 
   const positions = shuffle(Array.from({ length: 81 }, (_, i) => i));
@@ -87,11 +81,15 @@ export function removeClues(solution: string, tier: DifficultyTier): string {
   return grid.join("");
 }
 
-export function generatePuzzle(tier: DifficultyTier): {
+export function generatePuzzle(targetClues?: number): {
   grid: string;
   solution: string;
+  tier: DifficultyTier;
+  score: number;
 } {
   const solution = generateSolved();
-  const grid = removeClues(solution, tier);
-  return { grid, solution };
+  const clues = targetClues ?? Math.floor(Math.random() * 19) + 22;
+  const grid = removeClues(solution, clues);
+  const { tier, score } = scorePuzzle(grid);
+  return { grid, solution, tier, score };
 }

@@ -37,6 +37,9 @@ A standard 9×9 puzzle published daily at four difficulty tiers (Easy, Medium, H
 ## Difficulty Tier
 One of four levels — Easy, Medium, Hard, Expert — that classify both puzzles and Ghost Runs. Matchmaking only pairs players with Ghost Runs of the same Difficulty Tier. Tier assignment is determined by the hardest solving technique required to complete the puzzle without guessing: Easy requires only naked singles; Medium adds hidden singles and pointing pairs; Hard adds naked and hidden pairs and triples; Expert requires X-wing, swordfish, chains, or forcing chains.
 
+## Puzzle Score
+A weighted numeric score stored on every puzzle representing total solving effort. Computed by summing difficulty weights across all technique applications the technique solver makes when solving the puzzle without guessing. Not surfaced to players; used internally to calibrate tier boundaries and compare puzzle difficulty within a tier.
+
 ## Daily Leaderboard
 A ranked list of Effective Times for all players who completed a given day's Daily Game. Resets each day with the new puzzle. Has no effect on ELO or Matchmaking.
 

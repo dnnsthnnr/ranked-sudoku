@@ -224,7 +224,7 @@ export function RaceScreen() {
     if (state.phase !== "playing") return;
 
     function handleKey(e: KeyboardEvent) {
-      const { selectedCell, given, board, payload, startTime, mistakes, mistakeCount } = state;
+      const { selectedCell, given, board, payload, startTime, mistakeCount } = state;
       if (selectedCell === null || !payload || startTime === null) return;
       if (given[selectedCell]) return;
 

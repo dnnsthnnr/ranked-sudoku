@@ -27,17 +27,17 @@ export class LocalFileReplayStore implements ReplayStore {
   }
 }
 
-let _store: ReplayStore | null = null;
+let store: ReplayStore | null = null;
 
 export function getReplayStore(): ReplayStore {
-  if (!_store) {
+  if (!store) {
     const url = process.env.DATABASE_URL ?? "";
     if (url.startsWith("file:") || process.env.REPLAY_STORAGE === "local") {
-      _store = new LocalFileReplayStore();
+      store = new LocalFileReplayStore();
     } else {
       // TODO: return R2ReplayStore for production
-      _store = new LocalFileReplayStore();
+      store = new LocalFileReplayStore();
     }
   }
-  return _store;
+  return store;
 }

@@ -1,5 +1,5 @@
 import "dotenv/config";
-import { db } from "@/db/client";
+import { controlDb } from "@/db/client";
 import { DrizzlePuzzleRepository } from "@/repositories/drizzle/puzzle.repository";
 import { generatePuzzle } from "./generate";
 import type { DifficultyTier } from "@/domain/puzzle";
@@ -9,7 +9,7 @@ const PUZZLES_PER_TIER = 50;
 const TIERS: DifficultyTier[] = ["easy", "medium", "hard"];
 
 async function seed() {
-  const repo = new DrizzlePuzzleRepository(db);
+  const repo = new DrizzlePuzzleRepository(controlDb);
 
   let total = 0;
   for (const tier of TIERS) {

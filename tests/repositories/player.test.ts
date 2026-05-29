@@ -4,29 +4,50 @@ import { createTestDb } from "../helpers/db";
 
 describe("DrizzlePlayerRepository", () => {
   let repo: DrizzlePlayerRepository;
+  let defaultUserDbId: string;
 
   beforeAll(async () => {
-    const { db } = await createTestDb();
-    repo = new DrizzlePlayerRepository(db);
+    const db = await createTestDb();
+    repo = new DrizzlePlayerRepository(db.controlDb);
+    defaultUserDbId = db.defaultUserDbId;
   });
 
   it("upserts and retrieves a player", async () => {
-    await repo.upsert({ id: "player-1", elo: 800, raceCount: 0, skillLevel: "intermediate" });
+    await repo.upsert({
+      id: "player-1",
+      elo: 800,
+      raceCount: 0,
+      skillLevel: "intermediate",
+      userDbId: defaultUserDbId,
+    });
     const player = await repo.findById("player-1");
     expect(player?.id).toBe("player-1");
     expect(player?.elo).toBe(800);
     expect(player?.skillLevel).toBe("intermediate");
+    expect(player?.userDbId).toBe(defaultUserDbId);
   });
 
   it("updates elo and race count on upsert", async () => {
-    await repo.upsert({ id: "player-1", elo: 850, raceCount: 1, skillLevel: "intermediate" });
+    await repo.upsert({
+      id: "player-1",
+      elo: 850,
+      raceCount: 1,
+      skillLevel: "intermediate",
+      userDbId: defaultUserDbId,
+    });
     const player = await repo.findById("player-1");
     expect(player?.elo).toBe(850);
     expect(player?.raceCount).toBe(1);
   });
 
   it("updates elo directly", async () => {
-    await repo.upsert({ id: "player-2", elo: 600, raceCount: 0, skillLevel: "beginner" });
+    await repo.upsert({
+      id: "player-2",
+      elo: 600,
+      raceCount: 0,
+      skillLevel: "beginner",
+      userDbId: defaultUserDbId,
+    });
     await repo.updateElo("player-2", 620, 1);
     const player = await repo.findById("player-2");
     expect(player?.elo).toBe(620);

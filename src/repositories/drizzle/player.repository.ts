@@ -1,20 +1,25 @@
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import type { LibSQLDatabase } from "drizzle-orm/libsql";
 import type { Player } from "@/domain/player";
 import type { PlayerRepository } from "@/repositories/player.repository";
-import { players } from "@/db/schema";
-import type * as schema from "@/db/schema";
+import { players } from "@/db/schema/control";
+import type * as controlSchema from "@/db/schema/control";
 
 export class DrizzlePlayerRepository implements PlayerRepository {
-  constructor(private readonly db: LibSQLDatabase<typeof schema>) {}
+  constructor(private readonly db: LibSQLDatabase<typeof controlSchema>) {}
 
-  async upsert(player: Omit<Player, "createdAt">): Promise<void> {
+  async upsert(player: Omit<Player, "createdAt" | "updatedAt">): Promise<void> {
     await this.db
       .insert(players)
       .values(player)
       .onConflictDoUpdate({
         target: players.id,
-        set: { elo: player.elo, raceCount: player.raceCount },
+        set: {
+          displayName: player.displayName,
+          elo: player.elo,
+          raceCount: player.raceCount,
+          updatedAt: sql`(datetime('now'))`,
+        },
       });
   }
 
@@ -26,6 +31,9 @@ export class DrizzlePlayerRepository implements PlayerRepository {
   }
 
   async updateElo(id: string, elo: number, raceCount: number): Promise<void> {
-    await this.db.update(players).set({ elo, raceCount }).where(eq(players.id, id));
+    await this.db
+      .update(players)
+      .set({ elo, raceCount, updatedAt: sql`(datetime('now'))` })
+      .where(eq(players.id, id));
   }
 }

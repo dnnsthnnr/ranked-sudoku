@@ -33,9 +33,9 @@ describe("Daily puzzle flow", () => {
   let dailyGameRepo: DrizzleDailyGameRepository;
 
   beforeAll(async () => {
-    const { db } = await createTestDb();
-    puzzleRepo = new DrizzlePuzzleRepository(db);
-    dailyGameRepo = new DrizzleDailyGameRepository(db);
+    const { controlDb } = await createTestDb();
+    puzzleRepo = new DrizzlePuzzleRepository(controlDb);
+    dailyGameRepo = new DrizzleDailyGameRepository(controlDb);
   });
 
   it("stores and retrieves a daily game for a given date and tier", async () => {

@@ -9,9 +9,12 @@ import { DrizzlePlayerRepository } from "@/repositories/drizzle/player.repositor
 import { DrizzleGhostRunRepository } from "@/repositories/drizzle/ghost-run.repository";
 import { DrizzleDailyGameRepository } from "@/repositories/drizzle/daily-game.repository";
 import type { DifficultyTier } from "@/domain/puzzle";
-import * as schema from "@/db/schema";
+import * as controlSchema from "@/db/schema/control";
+import * as userSchema from "@/db/schema/user";
+import { userDbRegistry } from "@/db/schema/control";
 
-const DB_PATH = "file:./local.db";
+const CONTROL_DB_PATH = "file:./local.control.db";
+const USER_DB_PATH = "file:./local.user.db";
 
 function todayISO(): string {
   return new Date().toISOString().split("T")[0];
@@ -67,16 +70,29 @@ function generateGhostMoves(
 }
 
 async function main() {
-  const client = createClient({ url: DB_PATH });
-  const db = drizzle(client, { schema });
+  const controlClient = createClient({ url: CONTROL_DB_PATH });
+  const userClient = createClient({ url: USER_DB_PATH });
+  const controlDb = drizzle(controlClient, { schema: controlSchema });
+  const userDb = drizzle(userClient, { schema: userSchema });
 
-  console.log("Running migrations on local.db...");
-  await migrate(db, { migrationsFolder: "./drizzle" });
+  console.log("Running migrations...");
+  await migrate(controlDb, { migrationsFolder: "./drizzle/control" });
+  await migrate(userDb, { migrationsFolder: "./drizzle/user" });
 
-  const puzzleRepo = new DrizzlePuzzleRepository(db);
-  const playerRepo = new DrizzlePlayerRepository(db);
-  const ghostRunRepo = new DrizzleGhostRunRepository(db);
-  const dailyGameRepo = new DrizzleDailyGameRepository(db);
+  // Create a default pool entry for local dev (token is a placeholder — no Turso in local mode).
+  const poolId = randomUUID();
+  await controlDb
+    .insert(userDbRegistry)
+    .values({ id: poolId, dbUrl: USER_DB_PATH, encryptedToken: "local" })
+    .onConflictDoNothing();
+
+  const puzzleRepo = new DrizzlePuzzleRepository(controlDb);
+  const playerRepo = new DrizzlePlayerRepository(controlDb);
+  // getPlayerDb is only used by findMatchFor — not called during seeding.
+  const ghostRunRepo = new DrizzleGhostRunRepository(controlDb, async () => {
+    throw new Error("getPlayerDb not available in seed script");
+  });
+  const dailyGameRepo = new DrizzleDailyGameRepository(controlDb);
   const replayStore = new LocalFileReplayStore();
 
   await playerRepo.upsert({
@@ -84,6 +100,7 @@ async function main() {
     elo: 800,
     raceCount: 50,
     skillLevel: "intermediate",
+    userDbId: poolId,
   });
   console.log("Bot player ready.");
 
@@ -111,8 +128,9 @@ async function main() {
       playerId: "bot-player",
       stampedElo: 800,
       effectiveTime,
-      replayR2Key: ghostRunId,
-      isSeedRun: true,
+      replayKey: ghostRunId,
+      source: "seed",
+      isActiveInPool: true,
     });
 
     console.log(
@@ -121,7 +139,8 @@ async function main() {
   }
 
   console.log("\nDone. Run `pnpm dev` and open http://localhost:3000/daily");
-  client.close();
+  controlClient.close();
+  userClient.close();
 }
 
 main().catch((err) => {

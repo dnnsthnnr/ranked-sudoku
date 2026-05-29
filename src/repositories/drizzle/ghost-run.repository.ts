@@ -3,11 +3,16 @@ import type { LibSQLDatabase } from "drizzle-orm/libsql";
 import type { GhostRun } from "@/domain/ghost-run";
 import type { DifficultyTier } from "@/domain/puzzle";
 import type { GhostRunRepository } from "@/repositories/ghost-run.repository";
-import { ghostRuns, puzzles, races } from "@/db/schema";
-import type * as schema from "@/db/schema";
+import type { PlayerDbResolver } from "@/db/client";
+import { ghostRuns, puzzles } from "@/db/schema/control";
+import { rankedMatches } from "@/db/schema/user";
+import type * as controlSchema from "@/db/schema/control";
 
 export class DrizzleGhostRunRepository implements GhostRunRepository {
-  constructor(private readonly db: LibSQLDatabase<typeof schema>) {}
+  constructor(
+    private readonly db: LibSQLDatabase<typeof controlSchema>,
+    private readonly getPlayerDb: PlayerDbResolver,
+  ) {}
 
   async insert(ghostRun: Omit<GhostRun, "createdAt">): Promise<void> {
     await this.db.insert(ghostRuns).values(ghostRun);
@@ -43,24 +48,25 @@ export class DrizzleGhostRunRepository implements GhostRunRepository {
     tier: DifficultyTier,
     playerElo: number,
   ): Promise<GhostRun | null> {
-    // Ghost runs the player has already raced
-    const racedIds = this.db
-      .select({ id: races.ghostRunId })
-      .from(races)
-      .where(eq(races.playerId, playerId));
+    const userDb = await this.getPlayerDb(playerId);
+    const racedRows = await userDb
+      .select({ ghostRunId: rankedMatches.ghostRunId })
+      .from(rankedMatches)
+      .where(eq(rankedMatches.playerId, playerId));
+    const racedIds = racedRows.map((r) => r.ghostRunId);
 
-    // Closest Stamped ELO to playerElo, same tier, not already raced, not own runs
+    const conditions = [
+      eq(puzzles.difficultyTier, tier),
+      eq(ghostRuns.isActiveInPool, true),
+      ne(ghostRuns.playerId, playerId),
+      ...(racedIds.length > 0 ? [notInArray(ghostRuns.id, racedIds)] : []),
+    ];
+
     const row = await this.db
       .select({ ghostRuns })
       .from(ghostRuns)
       .innerJoin(puzzles, eq(ghostRuns.puzzleId, puzzles.id))
-      .where(
-        and(
-          eq(puzzles.difficultyTier, tier),
-          ne(ghostRuns.playerId, playerId),
-          notInArray(ghostRuns.id, racedIds),
-        ),
-      )
+      .where(and(...conditions))
       .orderBy(asc(sql`abs(${ghostRuns.stampedElo} - ${playerElo})`))
       .limit(1);
 

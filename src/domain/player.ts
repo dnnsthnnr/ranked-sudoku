@@ -9,8 +9,11 @@ export const STARTING_ELO: Record<SkillLevel, number> = {
 
 export interface Player {
   id: string;
+  displayName?: string | null;
   elo: number;
   raceCount: number;
+  userDbId: string;
   skillLevel: SkillLevel;
   createdAt: string;
+  updatedAt: string;
 }

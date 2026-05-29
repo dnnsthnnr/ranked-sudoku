@@ -16,7 +16,7 @@ export async function GET(request: Request) {
 
   const [puzzle, replay] = await Promise.all([
     puzzleRepository.findById(ghostRun.puzzleId),
-    getReplayStore().get(ghostRun.replayR2Key),
+    getReplayStore().get(ghostRun.replayKey),
   ]);
 
   if (!puzzle || !replay) {

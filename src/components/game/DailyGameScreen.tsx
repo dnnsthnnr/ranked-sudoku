@@ -26,6 +26,7 @@ interface GameState {
   selectedValue: number | null;
   elapsedMs: number;
   startTime: number | null;
+  pausedAt: number | null;
   playerMoves: ReplayMove[];
   error: string | null;
 }
@@ -40,7 +41,9 @@ type Action =
   | { type: "ERASE"; index: number }
   | { type: "TICK"; elapsedMs: number }
   | { type: "FINISH" }
-  | { type: "RESTART" };
+  | { type: "RESTART" }
+  | { type: "PAUSE" }
+  | { type: "RESUME" };
 
 function initBoard(grid: string): { board: number[]; given: boolean[] } {
   const board = grid.split("").map(Number);
@@ -133,6 +136,16 @@ function reducer(state: GameState, action: Action): GameState {
     case "RESTART":
       return { ...state, phase: "idle", puzzle: null, tier: null, error: null };
 
+    case "PAUSE":
+      if (state.phase !== "playing" || state.pausedAt !== null) return state;
+      return { ...state, pausedAt: Date.now() };
+
+    case "RESUME": {
+      if (state.pausedAt === null || state.startTime === null) return state;
+      const pauseDuration = Date.now() - state.pausedAt;
+      return { ...state, pausedAt: null, startTime: state.startTime + pauseDuration };
+    }
+
     default:
       return state;
   }
@@ -150,6 +163,7 @@ const initialState: GameState = {
   selectedValue: null,
   elapsedMs: 0,
   startTime: null,
+  pausedAt: null,
   playerMoves: [],
   error: null,
 };
@@ -159,12 +173,25 @@ export function DailyGameScreen() {
 
   // Ticker
   useEffect(() => {
-    if (state.phase !== "playing" || state.startTime === null) return;
+    if (state.phase !== "playing" || state.startTime === null || state.pausedAt !== null) return;
     const id = setInterval(() => {
       dispatch({ type: "TICK", elapsedMs: Date.now() - state.startTime! });
     }, 250);
     return () => clearInterval(id);
-  }, [state.phase, state.startTime]);
+  }, [state.phase, state.startTime, state.pausedAt]);
+
+  // Pause/resume on tab visibility
+  useEffect(() => {
+    function handleVisibility() {
+      if (document.hidden) {
+        dispatch({ type: "PAUSE" });
+      } else {
+        dispatch({ type: "RESUME" });
+      }
+    }
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => document.removeEventListener("visibilitychange", handleVisibility);
+  }, []);
 
   // Keyboard handler
   useEffect(() => {
@@ -268,6 +295,7 @@ export function DailyGameScreen() {
     selectedCell,
     selectedValue,
     elapsedMs,
+    pausedAt,
     error,
   } = state;
 
@@ -341,14 +369,21 @@ export function DailyGameScreen() {
         <Timer elapsedMs={elapsedMs} mistakeCount={mistakeCount} />
         {tier && <span className="text-xs text-gray-400 capitalize">{tier}</span>}
       </div>
-      <Board
-        board={board}
-        given={given}
-        mistakes={mistakes}
-        selectedCell={selectedCell}
-        selectedValue={selectedValue}
-        onCellClick={(idx) => dispatch({ type: "SELECT_CELL", index: idx })}
-      />
+      <div className="relative">
+        <Board
+          board={board}
+          given={given}
+          mistakes={mistakes}
+          selectedCell={selectedCell}
+          selectedValue={selectedValue}
+          onCellClick={(idx) => dispatch({ type: "SELECT_CELL", index: idx })}
+        />
+        {pausedAt !== null && (
+          <div className="absolute inset-0 flex items-center justify-center rounded-lg backdrop-blur-sm bg-white/40">
+            <p className="text-gray-700 font-semibold text-sm">Paused</p>
+          </div>
+        )}
+      </div>
       <div className="flex gap-2">
         {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => {
           const isComplete = completedNumbers.has(n);

@@ -1,11 +1,8 @@
 import { type ReplayMove } from "@/lib/replay";
 import { getReplayStore } from "@/lib/replay-store";
-import {
-  ghostRunRepository,
-  playerRepository,
-  rankedMatchRepository,
-} from "@/repositories";
+import { ghostRunRepository, playerRepository, rankedMatchRepository } from "@/repositories";
 import { computeEloChange } from "@/lib/elo";
+import { replayKey as makeReplayKey } from "@/lib/uuid";
 import { randomUUID } from "node:crypto";
 
 interface SubmitBody {
@@ -34,8 +31,8 @@ export async function POST(request: Request) {
     return Response.json({ error: "Ghost run not found" }, { status: 404 });
   }
 
-  const replayKey = randomUUID();
-  await getReplayStore().put(replayKey, {
+  const key = makeReplayKey(body.puzzleId, body.playerId, body.solvedAt);
+  await getReplayStore().put(key, {
     puzzleId: body.puzzleId,
     moves: body.moves,
     effectiveTime: body.effectiveTime,
@@ -75,11 +72,11 @@ export async function POST(request: Request) {
       playerId: body.playerId,
       stampedElo: newElo,
       effectiveTime: body.effectiveTime,
-      replayKey,
+      replayKey: key,
       source: "ranked",
       isActiveInPool: true,
     });
   }
 
-  return Response.json({ ok: true, outcome: body.outcome, replayKey, eloChange, newElo });
+  return Response.json({ ok: true, outcome: body.outcome, replayKey: key, eloChange, newElo });
 }

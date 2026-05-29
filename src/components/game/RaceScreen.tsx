@@ -3,8 +3,13 @@
 import { useCallback, useEffect, useReducer } from "react";
 import { Board } from "@/components/sudoku/Board";
 import { Timer } from "@/components/game/Timer";
-import { OpponentProgress } from "@/components/game/OpponentProgress";
-import type { ReplayData, ReplayMove } from "@/lib/replay";
+import { LeadBar } from "@/components/game/LeadBar";
+import {
+  computeEffectiveTime,
+  toEffectiveMs,
+  type ReplayData,
+  type ReplayMove,
+} from "@/lib/replay";
 import type { DifficultyTier } from "@/domain/puzzle";
 
 interface RunSummary {
@@ -35,7 +40,9 @@ interface RaceState {
   board: number[];
   given: boolean[];
   mistakes: Set<number>;
+  mistakeCount: number;
   selectedCell: number | null;
+  selectedValue: number | null;
   elapsedMs: number;
   startTime: number | null;
   outcome: "win" | "loss" | null;
@@ -51,6 +58,7 @@ type Action =
   | { type: "LOAD_RACE_SUCCESS"; payload: RacePayload }
   | { type: "LOAD_ERROR"; error: string }
   | { type: "SELECT_CELL"; index: number }
+  | { type: "SELECT_VALUE"; value: number }
   | { type: "ENTER_VALUE"; index: number; value: number; isMistake: boolean; timestamp: number }
   | { type: "ERASE"; index: number }
   | { type: "TICK"; elapsedMs: number }
@@ -86,7 +94,9 @@ function reducer(state: RaceState, action: Action): RaceState {
         board,
         given,
         mistakes: new Set(),
+        mistakeCount: 0,
         selectedCell: null,
+        selectedValue: null,
         elapsedMs: 0,
         startTime: Date.now(),
         outcome: null,
@@ -102,8 +112,17 @@ function reducer(state: RaceState, action: Action): RaceState {
         error: action.error,
       };
 
-    case "SELECT_CELL":
-      return { ...state, selectedCell: action.index };
+    case "SELECT_CELL": {
+      const cellValue = state.board[action.index];
+      return {
+        ...state,
+        selectedCell: action.index,
+        selectedValue: cellValue !== 0 ? cellValue : state.selectedValue,
+      };
+    }
+
+    case "SELECT_VALUE":
+      return { ...state, selectedValue: action.value };
 
     case "ENTER_VALUE": {
       const newBoard = [...state.board];
@@ -118,6 +137,8 @@ function reducer(state: RaceState, action: Action): RaceState {
         ...state,
         board: newBoard,
         mistakes: newMistakes,
+        mistakeCount: state.mistakeCount + (action.isMistake ? 1 : 0),
+        selectedValue: action.value,
         playerMoves: [
           ...state.playerMoves,
           {
@@ -136,11 +157,19 @@ function reducer(state: RaceState, action: Action): RaceState {
       newBoard[action.index] = 0;
       const newMistakes = new Set(state.mistakes);
       newMistakes.delete(action.index);
-      return { ...state, board: newBoard, mistakes: newMistakes };
+      return { ...state, board: newBoard, mistakes: newMistakes, selectedValue: null };
     }
 
-    case "TICK":
-      return { ...state, elapsedMs: action.elapsedMs };
+    case "TICK": {
+      const newElapsedMs = action.elapsedMs;
+      if (state.payload) {
+        const effectiveMs = toEffectiveMs(newElapsedMs, state.mistakeCount);
+        if (effectiveMs >= state.payload.replay.effectiveTime) {
+          return { ...state, elapsedMs: newElapsedMs, phase: "finished", outcome: "loss" };
+        }
+      }
+      return { ...state, elapsedMs: newElapsedMs };
+    }
 
     case "FINISH":
       return { ...state, phase: "finished", outcome: action.outcome };
@@ -161,7 +190,9 @@ const initialState: RaceState = {
   board: [],
   given: [],
   mistakes: new Set(),
+  mistakeCount: 0,
   selectedCell: null,
+  selectedValue: null,
   elapsedMs: 0,
   startTime: null,
   outcome: null,
@@ -193,7 +224,7 @@ export function RaceScreen() {
     if (state.phase !== "playing") return;
 
     function handleKey(e: KeyboardEvent) {
-      const { selectedCell, given, board, payload, startTime, mistakes } = state;
+      const { selectedCell, given, board, payload, startTime, mistakeCount } = state;
       if (selectedCell === null || !payload || startTime === null) return;
       if (given[selectedCell]) return;
 
@@ -212,17 +243,17 @@ export function RaceScreen() {
       dispatch({ type: "ENTER_VALUE", index: selectedCell, value: digit, isMistake, timestamp });
 
       if (isMistake) {
-        if (mistakes.size + 1 >= 3) dispatch({ type: "FINISH", outcome: "loss" });
+        if (mistakeCount + 1 >= 3) dispatch({ type: "FINISH", outcome: "loss" });
         return;
       }
 
       const newBoard = [...board];
       newBoard[selectedCell] = digit;
       if (newBoard.every((v, i) => v === Number(payload.puzzle.solution[i]))) {
-        const effectiveTime = timestamp + mistakes.size * 10_000;
+        const effectiveTime = toEffectiveMs(timestamp, mistakeCount);
         dispatch({
           type: "FINISH",
-          outcome: effectiveTime <= payload.ghostRun.effectiveTime ? "win" : "loss",
+          outcome: effectiveTime <= payload.replay.effectiveTime ? "win" : "loss",
         });
       }
     }
@@ -234,7 +265,7 @@ export function RaceScreen() {
   // Submit on finish
   useEffect(() => {
     if (state.phase !== "finished" || !state.payload) return;
-    const { payload, playerMoves, elapsedMs, mistakes, outcome } = state;
+    const { payload, playerMoves, elapsedMs, mistakeCount, outcome } = state;
     fetch("/api/race/submit", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -242,9 +273,9 @@ export function RaceScreen() {
         ghostRunId: payload.ghostRun.id,
         puzzleId: payload.puzzle.id,
         moves: playerMoves,
-        effectiveTime: elapsedMs + mistakes.size * 10_000,
+        effectiveTime: computeEffectiveTime(playerMoves),
         solvedAt: elapsedMs,
-        mistakes: mistakes.size,
+        mistakes: mistakeCount,
         outcome,
       }),
     }).catch(() => {});
@@ -276,7 +307,7 @@ export function RaceScreen() {
 
   const enterValue = useCallback(
     (n: number) => {
-      const { selectedCell, given, board, payload, startTime, mistakes, phase } = state;
+      const { selectedCell, given, board, payload, startTime, mistakeCount, phase } = state;
       if (phase !== "playing" || selectedCell === null || !payload || startTime === null) return;
       if (given[selectedCell]) return;
       const correctVal = Number(payload.puzzle.solution[selectedCell]);
@@ -284,16 +315,16 @@ export function RaceScreen() {
       const timestamp = Date.now() - startTime;
       dispatch({ type: "ENTER_VALUE", index: selectedCell, value: n, isMistake, timestamp });
       if (isMistake) {
-        if (mistakes.size + 1 >= 3) dispatch({ type: "FINISH", outcome: "loss" });
+        if (mistakeCount + 1 >= 3) dispatch({ type: "FINISH", outcome: "loss" });
         return;
       }
       const newBoard = [...board];
       newBoard[selectedCell] = n;
       if (newBoard.every((v, i) => v === Number(payload.puzzle.solution[i]))) {
-        const effectiveTime = timestamp + mistakes.size * 10_000;
+        const effectiveTime = toEffectiveMs(timestamp, mistakeCount);
         dispatch({
           type: "FINISH",
-          outcome: effectiveTime <= payload.ghostRun.effectiveTime ? "win" : "loss",
+          outcome: effectiveTime <= payload.replay.effectiveTime ? "win" : "loss",
         });
       }
     },
@@ -308,7 +339,9 @@ export function RaceScreen() {
     board,
     given,
     mistakes,
+    mistakeCount,
     selectedCell,
+    selectedValue,
     elapsedMs,
     outcome,
     error,
@@ -415,7 +448,7 @@ export function RaceScreen() {
 
   // ── Finished ────────────────────────────────────────────────────────────
   if (phase === "finished") {
-    const effectiveTime = elapsedMs + mistakes.size * 10_000;
+    const effectiveTime = computeEffectiveTime(state.playerMoves);
     return (
       <div className="flex flex-col items-center gap-6">
         <div
@@ -425,7 +458,7 @@ export function RaceScreen() {
             {outcome === "win" ? "You Won! 🎉" : "You Lost"}
           </p>
           <p className="text-gray-600">Your time: {formatTime(effectiveTime)}</p>
-          <p className="text-gray-600">Opponent: {formatTime(payload.ghostRun.effectiveTime)}</p>
+          <p className="text-gray-600">Opponent: {formatTime(payload.replay.effectiveTime)}</p>
         </div>
         <button
           type="button"
@@ -438,11 +471,16 @@ export function RaceScreen() {
     );
   }
 
+  const completedNumbers = new Set<number>();
+  for (let n = 1; n <= 9; n++) {
+    if (board.filter((v, i) => v === n && !mistakes.has(i)).length === 9) completedNumbers.add(n);
+  }
+
   // ── Playing ─────────────────────────────────────────────────────────────
   return (
     <div className="flex flex-col items-center gap-6">
       <div className="flex items-center justify-between w-full max-w-xs">
-        <Timer elapsedMs={elapsedMs} mistakeCount={mistakes.size} />
+        <Timer elapsedMs={elapsedMs} mistakeCount={mistakeCount} />
         <span className="text-xs text-gray-400 capitalize">{selectedTier}</span>
       </div>
       <Board
@@ -450,25 +488,38 @@ export function RaceScreen() {
         given={given}
         mistakes={mistakes}
         selectedCell={selectedCell}
+        selectedValue={selectedValue}
         onCellClick={(idx) => dispatch({ type: "SELECT_CELL", index: idx })}
       />
       <div className="flex gap-2">
-        {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => (
-          <button
-            key={n}
-            type="button"
-            onClick={() => enterValue(n)}
-            className="w-9 h-9 bg-gray-100 hover:bg-gray-200 rounded-lg font-semibold text-gray-800 transition-colors"
-          >
-            {n}
-          </button>
-        ))}
+        {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => {
+          const isComplete = completedNumbers.has(n);
+          return (
+            <button
+              key={n}
+              type="button"
+              onClick={() => {
+                dispatch({ type: "SELECT_VALUE", value: n });
+                enterValue(n);
+              }}
+              disabled={isComplete}
+              className={`w-9 h-9 rounded-lg font-semibold transition-colors ${
+                isComplete
+                  ? "bg-gray-100 text-gray-400 opacity-30 cursor-not-allowed"
+                  : "bg-gray-100 hover:bg-gray-200 text-gray-800"
+              }`}
+            >
+              {n}
+            </button>
+          );
+        })}
       </div>
-      <OpponentProgress
+      <LeadBar
         replay={payload.replay}
         totalCells={totalCells}
         elapsedMs={elapsedMs}
         playerFilledCount={playerFilledCount}
+        mistakeCount={mistakeCount}
       />
     </div>
   );

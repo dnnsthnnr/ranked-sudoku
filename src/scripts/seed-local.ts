@@ -3,7 +3,8 @@ import { drizzle } from "drizzle-orm/libsql";
 import { migrate } from "drizzle-orm/libsql/migrator";
 import { randomUUID } from "node:crypto";
 import { generatePuzzle } from "@/lib/sudoku/generate";
-import { LocalFileReplayStore, type ReplayData, type ReplayMove } from "@/lib/replay";
+import { computeEffectiveTime, type ReplayData, type ReplayMove } from "@/lib/replay";
+import { LocalFileReplayStore } from "@/lib/replay-store";
 import { DrizzlePuzzleRepository } from "@/repositories/drizzle/puzzle.repository";
 import { DrizzlePlayerRepository } from "@/repositories/drizzle/player.repository";
 import { DrizzleGhostRunRepository } from "@/repositories/drizzle/ghost-run.repository";
@@ -117,7 +118,7 @@ async function main() {
     await dailyGameRepo.insert({ id: randomUUID(), puzzleId, tier, date: today });
 
     const { moves, solvedAt, mistakeCount } = generateGhostMoves(grid, solution, tier);
-    const effectiveTime = solvedAt + mistakeCount * 10_000;
+    const effectiveTime = computeEffectiveTime(moves);
 
     const replayData: ReplayData = { puzzleId, moves, effectiveTime, solvedAt };
     await replayStore.put(ghostRunId, replayData);

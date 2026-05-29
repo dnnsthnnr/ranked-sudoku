@@ -1,4 +1,5 @@
-import { getReplayStore, type ReplayMove } from "@/lib/replay";
+import { type ReplayMove } from "@/lib/replay";
+import { getReplayStore } from "@/lib/replay-store";
 import { randomUUID } from "node:crypto";
 
 interface SubmitBody {

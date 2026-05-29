@@ -1,5 +1,5 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { dirname, join } from "node:path";
+/** Penalty added to a player's effective time for each mistake, in milliseconds. */
+export const MISTAKE_PENALTY_MS = 10_000;
 
 export interface ReplayMove {
   cellIndex: number; // 0-80, row-major (row*9+col)
@@ -11,47 +11,46 @@ export interface ReplayMove {
 export interface ReplayData {
   puzzleId: string;
   moves: ReplayMove[];
-  effectiveTime: number; // raw time + (mistakes * 10_000) ms
+  effectiveTime: number; // raw time + (mistakes * MISTAKE_PENALTY_MS)
   solvedAt: number; // raw elapsed ms at completion
 }
 
-export interface ReplayStore {
-  put(key: string, data: ReplayData): Promise<void>;
-  get(key: string): Promise<ReplayData | null>;
-}
-
-export class LocalFileReplayStore implements ReplayStore {
-  constructor(private readonly dir = "data/replays") {}
-
-  async put(key: string, data: ReplayData): Promise<void> {
-    const filePath = join(this.dir, `${key}.json`);
-    await mkdir(dirname(filePath), { recursive: true });
-    await writeFile(filePath, JSON.stringify(data, null, 2), "utf-8");
-  }
-
-  async get(key: string): Promise<ReplayData | null> {
-    const filePath = join(this.dir, `${key}.json`);
-    try {
-      const content = await readFile(filePath, "utf-8");
-      return JSON.parse(content) as ReplayData;
-    } catch {
-      return null;
-    }
-  }
-}
-
-let _store: ReplayStore | null = null;
-
-export function getReplayStore(): ReplayStore {
-  if (!_store) {
-    const url = process.env.DATABASE_URL ?? "";
-    // Use local file storage when running against a local SQLite file
-    if (url.startsWith("file:") || process.env.REPLAY_STORAGE === "local") {
-      _store = new LocalFileReplayStore();
+/**
+ * Returns the number of correct cells the ghost has filled by the time the
+ * player's effective clock reaches `playerEffectiveMs`.
+ *
+ * Ghost moves carry raw timestamps. Each ghost mistake shifts all subsequent
+ * effective timestamps forward by MISTAKE_PENALTY_MS (mirroring how a live
+ * player's effective clock jumps on each mistake). Because effective timestamps
+ * are monotonically increasing, a single forward pass with an early exit is
+ * sufficient.
+ */
+export function countGhostFillsAt(moves: ReplayMove[], playerEffectiveMs: number): number {
+  let ghostMistakes = 0;
+  let filled = 0;
+  for (const move of moves) {
+    const effectiveTs = move.timestamp + ghostMistakes * MISTAKE_PENALTY_MS;
+    if (effectiveTs > playerEffectiveMs) break;
+    if (move.isMistake) {
+      ghostMistakes++;
     } else {
-      // TODO: return R2ReplayStore for production
-      _store = new LocalFileReplayStore();
+      filled++;
     }
   }
-  return _store;
+  return filled;
+}
+
+/**
+ * Derives the effective time for a completed replay from its move log alone.
+ * effectiveTime = lastCorrectMove.timestamp + mistakes × MISTAKE_PENALTY_MS
+ */
+export function computeEffectiveTime(moves: ReplayMove[]): number {
+  const mistakes = moves.filter((m) => m.isMistake).length;
+  const lastCorrect = [...moves].findLast((m) => !m.isMistake);
+  return (lastCorrect?.timestamp ?? 0) + mistakes * MISTAKE_PENALTY_MS;
+}
+
+/** Converts a raw elapsed time and mistake count into effective elapsed time. */
+export function toEffectiveMs(rawMs: number, mistakeCount: number): number {
+  return rawMs + mistakeCount * MISTAKE_PENALTY_MS;
 }

@@ -1,47 +1,38 @@
 import { describe, it, expect } from "vitest";
-import { uuidv5, replayKey } from "@/lib/uuid";
-
-describe("uuidv5", () => {
-  it("returns a valid UUID format", () => {
-    const id = uuidv5("test");
-    expect(id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
-  });
-
-  it("is deterministic — same input always produces same UUID", () => {
-    expect(uuidv5("hello")).toBe(uuidv5("hello"));
-  });
-
-  it("produces different UUIDs for different inputs", () => {
-    expect(uuidv5("foo")).not.toBe(uuidv5("bar"));
-  });
-
-  it("sets version bits to 5", () => {
-    const id = uuidv5("anything");
-    expect(id[14]).toBe("5");
-  });
-
-  it("sets variant bits correctly (8, 9, a, or b after third dash)", () => {
-    const id = uuidv5("anything");
-    const variantChar = id.split("-")[3][0];
-    expect(["8", "9", "a", "b"]).toContain(variantChar);
-  });
-});
+import { replayKey } from "@/lib/uuid";
 
 describe("replayKey", () => {
-  it("is deterministic for same puzzle/player/time", () => {
-    expect(replayKey("p1", "u1", 12345)).toBe(replayKey("p1", "u1", 12345));
+  const solvedAt = new Date("2026-05-30T14:23:00Z").getTime();
+
+  it("is prefixed with the ISO date of solvedAt", () => {
+    expect(replayKey(solvedAt)).toMatch(/^2026-05-30_/);
   });
 
-  it("differs when any input changes", () => {
-    const base = replayKey("p1", "u1", 12345);
-    expect(replayKey("p2", "u1", 12345)).not.toBe(base);
-    expect(replayKey("p1", "u2", 12345)).not.toBe(base);
-    expect(replayKey("p1", "u1", 99999)).not.toBe(base);
+  it("has a valid UUIDv4 after the date prefix", () => {
+    const key = replayKey(solvedAt);
+    const uuid = key.slice("2026-05-30_".length);
+    expect(uuid).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
   });
 
-  it("same player solving different puzzles at same time get different keys", () => {
-    expect(replayKey("puzzle-a", "player-1", 1000)).not.toBe(
-      replayKey("puzzle-b", "player-1", 1000),
-    );
+  it("produces unique keys on each call", () => {
+    expect(replayKey(solvedAt)).not.toBe(replayKey(solvedAt));
+  });
+
+  it("keys from the same day share the same prefix", () => {
+    const morning = new Date("2026-05-30T08:00:00Z").getTime();
+    const evening = new Date("2026-05-30T22:00:00Z").getTime();
+    expect(replayKey(morning).slice(0, 10)).toBe(replayKey(evening).slice(0, 10));
+  });
+
+  it("keys from different days have different prefixes", () => {
+    const day1 = new Date("2026-05-30T12:00:00Z").getTime();
+    const day2 = new Date("2026-05-31T12:00:00Z").getTime();
+    expect(replayKey(day1).slice(0, 10)).not.toBe(replayKey(day2).slice(0, 10));
+  });
+
+  it("sorts lexicographically by date", () => {
+    const older = replayKey(new Date("2026-01-01T00:00:00Z").getTime());
+    const newer = replayKey(new Date("2026-12-31T00:00:00Z").getTime());
+    expect(older < newer).toBe(true);
   });
 });

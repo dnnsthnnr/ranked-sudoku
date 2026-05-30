@@ -31,7 +31,7 @@ export async function POST(request: Request) {
     return Response.json({ error: "Ghost run not found" }, { status: 404 });
   }
 
-  const key = makeReplayKey(body.puzzleId, body.playerId, body.solvedAt);
+  const key = makeReplayKey(body.solvedAt);
   await getReplayStore().put(key, {
     puzzleId: body.puzzleId,
     moves: body.moves,

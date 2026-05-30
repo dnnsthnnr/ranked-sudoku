@@ -117,7 +117,7 @@ describe("race submit flow", () => {
   it("creates a winning ghost run with stamped post-win ELO", async () => {
     const SOLVE_AT = 1_700_000_000_000;
     const newElo = 825;
-    const key = replayKey(PUZZLE_ID, PLAYER_ID, SOLVE_AT);
+    const key = replayKey(SOLVE_AT);
 
     await ctx.ghostRunRepo.insert({
       id: "ghost-from-win",
@@ -188,7 +188,7 @@ describe("daily submit flow", () => {
       userDbId: db.defaultUserDbId,
     });
 
-    const key = replayKey("puzzle-daily-1", "player-daily-1", 1_700_000_001_000);
+    const key = replayKey(1_700_000_001_000);
 
     await ghostRunRepo.insert({
       id: "ghost-daily-1",

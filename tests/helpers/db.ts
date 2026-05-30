@@ -8,12 +8,15 @@ import * as userSchema from "@/db/schema/user";
 import { userDbRegistry } from "@/db/schema/control";
 
 export async function createTestDb() {
-  // Both planes share the same in-memory SQLite instance for tests.
-  const client = createClient({ url: "file::memory:" });
-  const controlDb = drizzle(client, { schema: controlSchema });
-  const userDb = drizzle(client, { schema: userSchema });
+  // Separate in-memory clients: both migration journals start at idx=0, so sharing
+  // a single client causes the user migrations to be skipped by the migrator.
+  const controlClient = createClient({ url: "file::memory:" });
+  const userClient = createClient({ url: "file::memory:" });
+  const controlDb = drizzle(controlClient, { schema: controlSchema });
+  const userDb = drizzle(userClient, { schema: userSchema });
   await migrate(controlDb, { migrationsFolder: "./drizzle/control" });
   await migrate(userDb, { migrationsFolder: "./drizzle/user" });
+  const client = controlClient; // kept for backwards compat
 
   // Insert a default pool entry so tests can create players with a valid userDbId.
   const defaultUserDbId = crypto.randomUUID();
